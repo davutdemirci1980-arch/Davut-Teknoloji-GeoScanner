@@ -386,12 +386,42 @@ input[type="range"] {
   gap: 8px;
 }
 
+.csv-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .csv-btn {
   align-self: flex-start;
 }
 
 .csv-status {
   color: var(--accent);
+}
+
+.csv-text-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.csv-text-box textarea {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  background: #0b1220;
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 8px;
+  resize: vertical;
+}
+
+.csv-text-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .anomaly-list {

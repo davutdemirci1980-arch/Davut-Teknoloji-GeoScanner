@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { AnalyzeResponse } from "../types";
 import { anomaliesToCsv, saveCsvFile } from "../csvExport";
 
@@ -14,6 +14,9 @@ export default function AnalysisPanel({ onAnalyze, busy, disabled, result }: Pro
   const [minSize, setMinSize] = useState(3);
   const [csvBusy, setCsvBusy] = useState(false);
   const [csvStatus, setCsvStatus] = useState<string | null>(null);
+  const [showCsvText, setShowCsvText] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const csvTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   async function handleDownloadCsv() {
     if (!result) return;
@@ -26,6 +29,32 @@ export default function AnalysisPanel({ onAnalyze, busy, disabled, result }: Pro
     } finally {
       setCsvBusy(false);
     }
+  }
+
+  async function handleCopyCsv() {
+    if (!result) return;
+    const csv = anomaliesToCsv(result);
+    try {
+      await navigator.clipboard.writeText(csv);
+      setCopyStatus("Panoya kopyalandı.");
+      return;
+    } catch {
+      // Clipboard API blocked in this view — fall through to manual select.
+    }
+    const el = csvTextareaRef.current;
+    if (el) {
+      el.focus();
+      el.select();
+      try {
+        if (document.execCommand("copy")) {
+          setCopyStatus("Panoya kopyalandı.");
+          return;
+        }
+      } catch {
+        // ignore, fall through to manual instructions
+      }
+    }
+    setCopyStatus("Otomatik kopyalanamadı — metni elle seçip kopyalayın (yukarıdaki kutu seçili).");
   }
 
   return (
@@ -51,10 +80,42 @@ export default function AnalysisPanel({ onAnalyze, busy, disabled, result }: Pro
           <p className="panel-hint">
             {result.anomalies.length} anomali tespit edildi · füzyon ort {result.fused_stats.mean.toFixed(3)}
           </p>
-          <button className="ghost-btn csv-btn" disabled={csvBusy || result.anomalies.length === 0} onClick={handleDownloadCsv}>
-            {csvBusy ? "Hazırlanıyor..." : "CSV İndir"}
-          </button>
+          <div className="csv-actions">
+            <button className="ghost-btn csv-btn" disabled={csvBusy || result.anomalies.length === 0} onClick={handleDownloadCsv}>
+              {csvBusy ? "Hazırlanıyor..." : "CSV İndir"}
+            </button>
+            <button
+              className="ghost-btn csv-btn"
+              disabled={result.anomalies.length === 0}
+              onClick={() => {
+                setShowCsvText((v) => !v);
+                setCopyStatus(null);
+              }}
+            >
+              {showCsvText ? "Metni Gizle" : "CSV'yi Göster / Kopyala"}
+            </button>
+          </div>
           {csvStatus && <p className="panel-hint csv-status">{csvStatus}</p>}
+          {showCsvText && (
+            <div className="csv-text-box">
+              <textarea
+                ref={csvTextareaRef}
+                readOnly
+                value={anomaliesToCsv(result)}
+                onFocus={(e) => e.currentTarget.select()}
+                rows={6}
+              />
+              <div className="csv-text-actions">
+                <button className="ghost-btn" onClick={handleCopyCsv}>
+                  Panoya Kopyala
+                </button>
+                {copyStatus && <span className="panel-hint csv-status">{copyStatus}</span>}
+              </div>
+              <p className="panel-hint">
+                Kopyalama çalışmazsa kutunun içine dokunun, tümünü seçip (uzun basılı tutup "Tümünü Seç") elle kopyalayın.
+              </p>
+            </div>
+          )}
           <div className="anomaly-list">
             {result.anomalies.map((a) => (
               <div key={a.id} className="anomaly-card">
