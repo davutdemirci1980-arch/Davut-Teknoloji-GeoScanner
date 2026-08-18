@@ -39,7 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export const api = {
+const networkApi = {
   getMaterials: () => request<Material[]>("/materials"),
   getSensors: () => request<SensorInfo[]>("/sensors"),
 
@@ -70,4 +70,39 @@ export const api = {
     request<SparseVolumeResponse>(
       `/scenarios/${sessionId}/analysis/fused_volume?min_probability=${minProbability}`
     ),
+};
+
+// The "standalone" build (a single self-contained HTML file with no server)
+// runs the whole simulation/AI engine in-browser instead of calling a
+// backend. VITE_STANDALONE is inlined at build time so the unused branch
+// (and everything it imports) is dropped from whichever bundle doesn't need it.
+export const IS_STANDALONE = import.meta.env.VITE_STANDALONE === "true";
+
+async function resolveApi() {
+  if (IS_STANDALONE) {
+    const { localApi } = await import("./localClient");
+    return localApi;
+  }
+  return networkApi;
+}
+
+const apiPromise = resolveApi();
+
+function bind<K extends keyof typeof networkApi>(key: K) {
+  return (async (...args: Parameters<(typeof networkApi)[K]>) => {
+    const resolved = await apiPromise;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (resolved[key] as any)(...args);
+  }) as (typeof networkApi)[K];
+}
+
+export const api = {
+  getMaterials: bind("getMaterials"),
+  getSensors: bind("getSensors"),
+  createScenario: bind("createScenario"),
+  getVoxels: bind("getVoxels"),
+  runSensors: bind("runSensors"),
+  getSensorVolume: bind("getSensorVolume"),
+  analyze: bind("analyze"),
+  getFusedVolume: bind("getFusedVolume"),
 };

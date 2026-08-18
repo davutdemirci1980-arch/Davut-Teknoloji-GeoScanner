@@ -73,6 +73,20 @@ Vite dev sunucusu `/api` isteklerini `http://localhost:8000`'e proxy'ler (bkz. `
 cd backend && source .venv/bin/activate && python3 -m pytest
 ```
 
+## Bağımsız (Sunucusuz) Sürüm
+
+`frontend/src/sim/` altında, backend'deki voksel motoru + 8 sensör + AI füzyon/sınıflandırma katmanının birebir TypeScript portu bulunuyor. Bu sayede uygulama **tamamen tarayıcıda, hiçbir sunucu olmadan** da çalışabiliyor — kurulum gerektirmeyen, tek bir HTML dosyasına paketlenmiş bir sürüm.
+
+```bash
+cd frontend
+npm install
+npm run build:standalone
+```
+
+Çıktı: `frontend/dist-standalone/index.html` — tek bir dosya, tek istisna Google Fonts hariç hiçbir dış bağlantı yapmaz; çift tıklayıp doğrudan tarayıcıda açabilir ya da herhangi bir statik dosya barındırma servisine (GitHub Pages, Netlify, vb.) yükleyebilirsiniz.
+
+Bu, `src/api/client.ts` içindeki `IS_STANDALONE` bayrağı (`VITE_STANDALONE` ortam değişkeni) ile kontrol edilir; normal `npm run build` backend'e bağlı kalmaya devam eder, hiçbir davranış değişmez.
+
 ## Android (APK) Olarak Derleme
 
 `frontend/android` klasöründe Capacitor ile hazırlanmış tam bir Android Studio projesi bulunuyor. Bu, web arayüzünü bir Android uygulaması olarak paketler. **Uygulama hâlâ ayrı bir backend'e ihtiyaç duyar** — telefon, backend'in çalıştığı adrese ağ üzerinden erişebilmelidir (aynı Wi-Fi'deki bilgisayarınız, ya da internete açık bir sunucu).

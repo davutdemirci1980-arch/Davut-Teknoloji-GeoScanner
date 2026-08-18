@@ -1,12 +1,18 @@
+/* GeoScanner is deliberately styled as a single, dark scanning-console
+   instrument panel (like a radar/sonar operator display) rather than a
+   theme-adaptive document, so every color below is painted explicitly and
+   the palette stays fixed regardless of the host's light/dark setting. */
 :root {
-  --bg: #070b12;
-  --panel-bg: #101825;
-  --panel-border: #1e2c3d;
-  --text: #e6edf5;
-  --text-dim: #8ea0b5;
-  --accent: #2dd4bf;
-  --accent-strong: #16b3a3;
-  --danger: #ff6b6b;
+  --bg: #070b0f;
+  --panel-bg: #0e151f;
+  --panel-border: #1d2a38;
+  --text: #e8eef4;
+  --text-dim: #8195a8;
+  --accent: #2bd9c2;
+  --accent-strong: #14b6a0;
+  --danger: #ff6a5c;
+  --font-ui: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color-scheme: dark;
 }
 
@@ -22,7 +28,7 @@ html, body, #root {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-ui);
 }
 
 .app-shell {
@@ -41,15 +47,21 @@ body {
 }
 
 .app-header h1 {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
+  font-weight: 600;
   margin: 0;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
+  text-wrap: balance;
 }
 
 .app-header p {
   margin: 2px 0 0;
   font-size: 0.8rem;
   color: var(--text-dim);
+}
+
+.standalone-tag {
+  color: var(--accent) !important;
 }
 
 .header-right {
@@ -79,7 +91,9 @@ body {
 }
 
 .scenario-badge {
-  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.76rem;
   color: var(--accent);
   border: 1px solid var(--accent-strong);
   border-radius: 999px;
@@ -237,6 +251,8 @@ input[type="range"] {
 }
 
 .sensor-depth {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 0.68rem;
   color: var(--text-dim);
 }
@@ -345,6 +361,11 @@ input[type="range"] {
   font-weight: 600;
 }
 
+.heatmap-stats {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 .heatmap-canvas {
   width: 100%;
   image-rendering: pixelated;
@@ -352,6 +373,7 @@ input[type="range"] {
 }
 
 .heatmap-axes {
+  font-family: var(--font-mono);
   display: flex;
   justify-content: space-between;
   font-size: 0.62rem;
@@ -388,10 +410,13 @@ input[type="range"] {
 }
 
 .anomaly-id {
+  font-family: var(--font-mono);
   color: var(--accent);
 }
 
 .anomaly-metrics {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "./api/client";
+import { api, IS_STANDALONE } from "./api/client";
 import VoxelViewer3D, { type ViewerMode } from "./components/VoxelViewer3D";
 import ScenarioControls from "./components/ScenarioControls";
 import SensorPanel from "./components/SensorPanel";
@@ -152,6 +152,7 @@ export default function App() {
         <div>
           <h1>Davut Teknoloji · GeoScanner</h1>
           <p>Tam voksel tabanlı, çoklu sensörlü, yapay zeka destekli yer altı görüntüleme simülasyon laboratuvarı</p>
+          {IS_STANDALONE && <p className="standalone-tag">Bağımsız sürüm — sunucu yok, tüm hesaplama bu cihazda çalışır</p>}
         </div>
         <div className="header-right">
           {scenario && (
@@ -160,7 +161,7 @@ export default function App() {
               {scenario.shape[0]}×{scenario.shape[1]}×{scenario.shape[2]} voksel
             </div>
           )}
-          <BackendSettings onSaved={() => window.location.reload()} />
+          {!IS_STANDALONE && <BackendSettings onSaved={() => window.location.reload()} />}
         </div>
       </header>
 
