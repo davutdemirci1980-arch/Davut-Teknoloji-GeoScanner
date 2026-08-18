@@ -4,6 +4,8 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,6 +28,7 @@ public class SplashActivity extends AppCompatActivity {
     private android.view.View fireGlow;
     private TextView tvTitle;
     private TextView tvSubtitle;
+    private TextView tvBuildMarker;
     private ProgressBar progressBar;
     private MediaPlayer mediaPlayer;
 
@@ -46,8 +49,19 @@ public class SplashActivity extends AppCompatActivity {
         tvTitle = findViewById(R.id.tvSplashTitle);
         tvSubtitle = findViewById(R.id.tvSplashSubtitle);
         progressBar = findViewById(R.id.progressSplash);
+        tvBuildMarker = findViewById(R.id.tvBuildMarker);
+        showBuildMarker();
 
         startAnimations();
+    }
+
+    private void showBuildMarker() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            tvBuildMarker.setText("YENİDEN İNŞA EDİLDİ • v" + info.versionName);
+        } catch (PackageManager.NameNotFoundException e) {
+            tvBuildMarker.setText("YENİDEN İNŞA EDİLDİ");
+        }
     }
 
     private void startAnimations() {
