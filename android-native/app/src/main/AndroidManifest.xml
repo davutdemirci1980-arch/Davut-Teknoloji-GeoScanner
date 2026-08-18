@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" tools:targetApi="31" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+
+    <application
+        android:theme="@style/Theme.GeoScanner"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:name=".GeoScannerApp"
+        android:allowBackup="true"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:roundIcon="@mipmap/ic_launcher_round">
+
+        <activity
+            android:theme="@style/Theme.GeoScanner.Splash"
+            android:name=".ui.splash.SplashActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.7esx" />
+                <data android:pathPattern=".*\\.csv" />
+                <data android:pathPattern=".*\\.vtk" />
+                <data android:pathPattern=".*\\.grd" />
+                <data android:pathPattern=".*\\.dat" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".ui.scan.ScanSetupActivity" android:screenOrientation="portrait" />
+        <activity android:name=".ui.scan.ScanActiveActivity" android:screenOrientation="portrait" android:keepScreenOn="true" />
+        <activity android:name=".ui.scan.ScanPreviewActivity" android:screenOrientation="portrait" />
+        <activity android:name=".ui.live3d.Live3DActivity" android:screenOrientation="landscape" android:keepScreenOn="true" />
+        <activity android:name=".ui.isosurface.IsoSurfaceActivity" android:screenOrientation="landscape" android:keepScreenOn="true" />
+        <activity android:name=".ui.records.RecordsActivity" android:screenOrientation="portrait" />
+        <activity android:name=".ui.settings.SettingsActivity" android:screenOrientation="portrait" />
+        <activity
+            android:name=".ui.voxler4d.Pro4DVoxlerActivity"
+            android:screenOrientation="landscape"
+            android:configChanges="screenSize|orientation"
+            android:keepScreenOn="true"
+            android:hardwareAccelerated="true" />
+    </application>
+</manifest>

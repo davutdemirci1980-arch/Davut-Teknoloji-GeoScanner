@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #111; overflow: hidden; touch-action: none; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #info { position: fixed; top: 10px; left: 10px; color: #00E5FF; font-family: monospace;
+    font-size: 12px; z-index: 10; pointer-events: none; text-shadow: 1px 1px 2px #000; }
+  #valueBar { position: fixed; right: 10px; top: 10px; bottom: 10px; width: 30px;
+    border-radius: 4px; overflow: hidden; z-index: 10; }
+  #barLabels { position: fixed; right: 45px; top: 10px; bottom: 10px; width: 50px;
+    z-index: 10; pointer-events: none; }
+  .barLabel { position: absolute; right: 0; color: #aaa; font-family: monospace; font-size: 10px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">Hazır - Sinyal bekleniyor...</div>
+<div id="valueBar"></div>
+<div id="barLabels"></div>
+
+<script>
+// ===== CANVAS 3D RENDERER - CDN BAĞIMLILIĞI YOK =====
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+var W, H;
+
+// Kamera
+var camRotX = -0.6, camRotY = 0.8, camDist = 6;
+var panX = 0, panY = 0;
+var dragging = false, lastTX = 0, lastTY = 0, pinchDist = 0;
+
+// Veri
+var points = [];
+var minVal = Infinity, maxVal = -Infinity;
+var autoRotate = true;
+var animFrame = null;
+
+function resize() {
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W; canvas.height = H;
+    draw();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ===== RENK HARİTASI =====
+function jet(t) {
+    t = Math.max(0, Math.min(1, t));
+    var r, g, b;
+    if (t < 0.125) { r = 0; g = 0; b = 128 + t * 1024; }
+    else if (t < 0.375) { r = 0; g = (t - 0.125) * 1020; b = 255; }
+    else if (t < 0.625) { r = (t - 0.375) * 1020; g = 255; b = 255 - (t - 0.375) * 1020; }
+    else if (t < 0.875) { r = 255; g = 255 - (t - 0.625) * 1020; b = 0; }
+    else { r = 255 - (t - 0.875) * 1020; g = 0; b = 0; }
+    return 'rgb(' + Math.round(Math.max(0,Math.min(255,r))) + ',' +
+           Math.round(Math.max(0,Math.min(255,g))) + ',' +
+           Math.round(Math.max(0,Math.min(255,b))) + ')';
+}
+
+// ===== 3D PROJEKSİYON =====
+function project(x, y, z) {
+    var cY = Math.cos(camRotY), sY = Math.sin(camRotY);
+    var x1 = x * cY - z * sY, z1 = x * sY + z * cY;
+    var cX = Math.cos(camRotX), sX = Math.sin(camRotX);
+    var y1 = y * cX - z1 * sX, z2 = y * sX + z1 * cX;
+    var fov = 350, d = z2 + camDist + 6;
+    if (d < 0.1) d = 0.1;
+    var scale = fov / d;
+    return { x: (x1 + panX) * scale + W / 2, y: -(y1 + panY) * scale + H / 2, z: z2, s: scale };
+}
+
+// ===== ÇİZİM =====
+function draw() {
+    if (!ctx) return;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, W, H);
+
+    // Eksenler
+    var axes = [
+        { f: [0,0,0], t: [2.5,0,0], c: '#FF4444', l: 'X' },
+        { f: [0,0,0], t: [0,2.5,0], c: '#44FF44', l: 'Y' },
+        { f: [0,0,0], t: [0,0,2.5], c: '#4444FF', l: 'Z' }
+    ];
+    for (var i = 0; i < axes.length; i++) {
+        var a = axes[i];
+        var p0 = project(a.f[0], a.f[1], a.f[2]);
+        var p1 = project(a.t[0], a.t[1], a.t[2]);
+        ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y);
+        ctx.strokeStyle = a.c; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.fillStyle = a.c; ctx.font = 'bold 14px monospace';
+        ctx.fillText(a.l, p1.x + 8, p1.y - 8);
+    }
+
+    // Zemin grid
+    ctx.strokeStyle = 'rgba(100,100,100,0.25)'; ctx.lineWidth = 0.5;
+    for (var i = -3; i <= 3; i += 0.5) {
+        var p0 = project(i, 0, -3), p1 = project(i, 0, 3);
+        ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+        p0 = project(-3, 0, i); p1 = project(3, 0, i);
+        ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+    }
+
+    if (points.length === 0) {
+        ctx.fillStyle = '#555'; ctx.font = '16px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('Sinyal bekleniyor...', W / 2, H / 2);
+        ctx.textAlign = 'left';
+        return;
+    }
+
+    // Yüzey çiz (grid varsa)
+    drawSurface();
+
+    // Noktaları derinliğe göre sırala
+    var proj = [];
+    for (var i = 0; i < points.length; i++) {
+        var p = points[i];
+        var pp = project(p.nx, p.ny, p.nz);
+        proj.push({ px: pp.x, py: pp.y, pz: pp.z, s: pp.s, c: p.color, v: p.val, t: p.t });
+    }
+    proj.sort(function(a, b) { return b.pz - a.pz; });
+
+    // Noktaları çiz
+    for (var i = 0; i < proj.length; i++) {
+        var p = proj[i];
+        var r = Math.max(5, Math.min(18, p.s * 0.25));
+
+        // Glow efekti
+        var grd = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, r * 2);
+        grd.addColorStop(0, p.c);
+        grd.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grd;
+        ctx.fillRect(p.px - r * 2, p.py - r * 2, r * 4, r * 4);
+
+        // Nokta
+        ctx.beginPath(); ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
+        ctx.fillStyle = p.c; ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+
+        // Değer etiketi (max 80 nokta için)
+        if (points.length < 80) {
+            ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.max(10, r * 1.2) + 'px monospace';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+            ctx.shadowColor = '#000'; ctx.shadowBlur = 3;
+            ctx.fillText(p.v.toFixed(0), p.px, p.py - r - 4);
+            ctx.shadowBlur = 0;
+        }
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+
+    // Bilgi
+    document.getElementById('info').innerHTML =
+        'Noktalar: <b>' + points.length + '</b> | ' +
+        'Min: <b>' + minVal.toFixed(1) + '</b> | Max: <b>' + maxVal.toFixed(1) + '</b>';
+
+    // Renk barı güncelle
+    updateColorBar();
+}
+
+function drawSurface() {
+    // Grid oluştur
+    var xSet = {}, ySet = {};
+    for (var i = 0; i < points.length; i++) {
+        xSet[points[i].ox] = 1; ySet[points[i].oy] = 1;
+    }
+    var ux = Object.keys(xSet).map(Number).sort(function(a,b){return a-b;});
+    var uy = Object.keys(ySet).map(Number).sort(function(a,b){return a-b;});
+    if (ux.length < 2 || uy.length < 2) return;
+
+    var grid = {};
+    for (var i = 0; i < points.length; i++) {
+        var p = points[i];
+        grid[p.ox + '_' + p.oy] = p;
+    }
+
+    // Yüzey dörtgenleri
+    for (var yi = 0; yi < uy.length - 1; yi++) {
+        for (var xi = 0; xi < ux.length - 1; xi++) {
+            var k00 = ux[xi] + '_' + uy[yi], k10 = ux[xi+1] + '_' + uy[yi];
+            var k01 = ux[xi] + '_' + uy[yi+1], k11 = ux[xi+1] + '_' + uy[yi+1];
+            if (!grid[k00] || !grid[k10] || !grid[k01] || !grid[k11]) continue;
+
+            var p00 = project(grid[k00].nx, grid[k00].ny, grid[k00].nz);
+            var p10 = project(grid[k10].nx, grid[k10].ny, grid[k10].nz);
+            var p01 = project(grid[k01].nx, grid[k01].ny, grid[k01].nz);
+            var p11 = project(grid[k11].nx, grid[k11].ny, grid[k11].nz);
+            var avg = (grid[k00].t + grid[k10].t + grid[k01].t + grid[k11].t) / 4;
+
+            ctx.beginPath();
+            ctx.moveTo(p00.x, p00.y); ctx.lineTo(p10.x, p10.y);
+            ctx.lineTo(p11.x, p11.y); ctx.lineTo(p01.x, p01.y);
+            ctx.closePath();
+            ctx.fillStyle = jet(avg); ctx.globalAlpha = 0.45; ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 0.5; ctx.stroke();
+        }
+    }
+}
+
+function updateColorBar() {
+    var bar = document.getElementById('valueBar');
+    var labels = document.getElementById('barLabels');
+    if (minVal >= maxVal) return;
+
+    var gradient = 'linear-gradient(to top,';
+    for (var i = 0; i <= 10; i++) {
+        var t = i / 10;
+        gradient += jet(t);
+        if (i < 10) gradient += ',';
+    }
+    gradient += ')';
+    bar.style.background = gradient;
+    bar.style.border = '1px solid #444';
+
+    labels.innerHTML = '';
+    for (var i = 0; i <= 4; i++) {
+        var t = i / 4;
+        var val = minVal + t * (maxVal - minVal);
+        var div = document.createElement('div');
+        div.className = 'barLabel';
+        div.style.bottom = (t * 100) + '%';
+        div.textContent = val.toFixed(0);
+        labels.appendChild(div);
+    }
+}
+
+// ===== API FONKSİYONLARI (Java'dan çağrılır) =====
+
+// Tek nokta ekle - en hızlı yöntem
+function addPoint(x, y, z, value) {
+    if (value < minVal) minVal = value;
+    if (value > maxVal) maxVal = value;
+    var range = maxVal - minVal;
+    if (range < 0.001) range = 1;
+    var t = (value - minVal) / range;
+
+    // Normalize koordinatlar
+    var allX = points.map(function(p){return p.ox;}).concat([x]);
+    var allY = points.map(function(p){return p.oy;}).concat([y]);
+    var xMin = Math.min.apply(null, allX), xMax = Math.max.apply(null, allX);
+    var yMin = Math.min.apply(null, allY), yMax = Math.max.apply(null, allY);
+    var xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
+
+    points.push({
+        ox: x, oy: y, val: value, t: t, color: jet(t),
+        nx: ((x - xMin) / xRange) * 4 - 2,
+        ny: t * 2.5,
+        nz: ((y - yMin) / yRange) * 4 - 2
+    });
+
+    // Tüm noktaların t ve normalize değerlerini güncelle (min/max değiştiğinde)
+    if (points.length > 1) {
+        var xArr = points.map(function(p){return p.ox;});
+        var yArr = points.map(function(p){return p.oy;});
+        xMin = Math.min.apply(null, xArr); xMax = Math.max.apply(null, xArr);
+        yMin = Math.min.apply(null, yArr); yMax = Math.max.apply(null, yArr);
+        xRange = xMax - xMin || 1; yRange = yMax - yMin || 1;
+
+        for (var i = 0; i < points.length; i++) {
+            var p = points[i];
+            p.t = (p.val - minVal) / range;
+            p.color = jet(p.t);
+            p.nx = ((p.ox - xMin) / xRange) * 4 - 2;
+            p.ny = p.t * 2.5;
+            p.nz = ((p.oy - yMin) / yRange) * 4 - 2;
+        }
+    }
+
+    draw();
+}
+
+// Toplu veri gönderme (eski API uyumluluğu)
+function render3D(jsonData) {
+    var data;
+    try { data = JSON.parse(jsonData); } catch(e) { return; }
+    var x = data.x, y = data.y, z = data.z || [], c = data.c;
+    if (!x || x.length === 0) return;
+
+    points = [];
+    minVal = Infinity; maxVal = -Infinity;
+    for (var i = 0; i < c.length; i++) {
+        if (c[i] < minVal) minVal = c[i];
+        if (c[i] > maxVal) maxVal = c[i];
+    }
+    var range = maxVal - minVal || 1;
+    var xMin = Math.min.apply(null, x), xMax = Math.max.apply(null, x);
+    var yMin = Math.min.apply(null, y), yMax = Math.max.apply(null, y);
+    var xRange = xMax - xMin || 1, yRange = yMax - yMin || 1;
+
+    for (var i = 0; i < x.length; i++) {
+        var t = (c[i] - minVal) / range;
+        points.push({
+            ox: x[i], oy: y[i], val: c[i], t: t, color: jet(t),
+            nx: ((x[i] - xMin) / xRange) * 4 - 2,
+            ny: t * 2.5,
+            nz: ((y[i] - yMin) / yRange) * 4 - 2
+        });
+    }
+    draw();
+}
+
+function clearAll() {
+    points = [];
+    minVal = Infinity; maxVal = -Infinity;
+    document.getElementById('info').textContent = 'Temizlendi - Sinyal bekleniyor...';
+    document.getElementById('valueBar').style.background = 'transparent';
+    document.getElementById('barLabels').innerHTML = '';
+    draw();
+}
+
+function renderIsoSurface(jsonData) { render3D(jsonData); }
+function renderPointCloud(jsonData) { render3D(jsonData); }
+
+// ===== DOKUNMA KONTROLLERİ =====
+canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    autoRotate = false;
+    if (e.touches.length === 1) {
+        dragging = true;
+        lastTX = e.touches[0].clientX; lastTY = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+        var dx = e.touches[0].clientX - e.touches[1].clientX;
+        var dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchDist = Math.sqrt(dx * dx + dy * dy);
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (e.touches.length === 1 && dragging) {
+        var dx = e.touches[0].clientX - lastTX, dy = e.touches[0].clientY - lastTY;
+        camRotY += dx * 0.01; camRotX += dy * 0.01;
+        camRotX = Math.max(-1.5, Math.min(1.5, camRotX));
+        lastTX = e.touches[0].clientX; lastTY = e.touches[0].clientY;
+        draw();
+    } else if (e.touches.length === 2) {
+        var dx = e.touches[0].clientX - e.touches[1].clientX;
+        var dy = e.touches[0].clientY - e.touches[1].clientY;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (pinchDist > 0) {
+            camDist *= pinchDist / d;
+            camDist = Math.max(2, Math.min(20, camDist));
+        }
+        pinchDist = d;
+        draw();
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', function() { dragging = false; });
+
+// Mouse kontrolleri
+canvas.addEventListener('mousedown', function(e) { dragging = true; autoRotate = false; lastTX = e.clientX; lastTY = e.clientY; });
+canvas.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    camRotY += (e.clientX - lastTX) * 0.01;
+    camRotX += (e.clientY - lastTY) * 0.01;
+    camRotX = Math.max(-1.5, Math.min(1.5, camRotX));
+    lastTX = e.clientX; lastTY = e.clientY;
+    draw();
+});
+canvas.addEventListener('mouseup', function() { dragging = false; });
+canvas.addEventListener('wheel', function(e) {
+    camDist += e.deltaY * 0.01;
+    camDist = Math.max(2, Math.min(20, camDist));
+    draw();
+});
+
+// Otomatik döndürme (veri yokken)
+function autoRotateLoop() {
+    if (autoRotate && points.length === 0) {
+        camRotY += 0.005;
+        draw();
+    }
+    requestAnimationFrame(autoRotateLoop);
+}
+autoRotateLoop();
+
+// İlk çizim
+draw();
+</script>
+</body>
+</html>

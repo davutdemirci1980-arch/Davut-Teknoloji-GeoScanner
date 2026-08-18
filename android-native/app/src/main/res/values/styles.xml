@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.GeoScanner" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:textColorPrimary">#ffffff</item>
+        <item name="android:textColorSecondary">#aaaaaa</item>
+        <item name="android:windowBackground">#111111</item>
+        <item name="android:statusBarColor">#111111</item>
+        <item name="android:navigationBarColor">#111111</item>
+        <item name="colorOnPrimary">#ffffff</item>
+        <item name="colorOnSecondary">#ffffff</item>
+        <item name="colorPrimary">#00aaff</item>
+        <item name="colorPrimaryVariant">#0088cc</item>
+        <item name="colorSecondary">#ff6b00</item>
+        <item name="colorSecondaryVariant">#cc5500</item>
+        <item name="materialButtonStyle">@style/GeoScanner.Button</item>
+    </style>
+
+    <style name="Theme.GeoScanner.Dialog" parent="Theme.MaterialComponents.Dialog.Alert">
+        <item name="android:textColorPrimary">#ffffff</item>
+        <item name="android:textColorSecondary">#dddddd</item>
+        <item name="android:windowBackground">#ff1a1a1a</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColorAlertDialogListItem">#ffffff</item>
+        <item name="colorAccent">#ffd700</item>
+        <item name="colorControlActivated">#ffd700</item>
+        <item name="colorControlHighlight">#33ffd700</item>
+        <item name="colorControlNormal">#ffd700</item>
+        <item name="colorPrimary">#ffd700</item>
+    </style>
+
+    <style name="DarkDialogTheme" parent="Theme.MaterialComponents.Dialog.Alert">
+        <item name="android:textColorPrimary">#ffffff</item>
+        <item name="android:textColorSecondary">#dddddd</item>
+        <item name="android:windowBackground">#ff1a1a2e</item>
+        <item name="android:textColorAlertDialogListItem">#ffffff</item>
+        <item name="colorAccent">#00e5ff</item>
+        <item name="colorControlActivated">#00e5ff</item>
+        <item name="colorControlHighlight">#3300e5ff</item>
+        <item name="colorControlNormal">#00e5ff</item>
+        <item name="colorPrimary">#00e5ff</item>
+    </style>
+
+    <style name="Theme.GeoScanner.Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+    </style>
+
+    <style name="GeoScanner.Button" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textColor">@null</item>
+        <item name="backgroundTint">@null</item>
+    </style>
+</resources>
