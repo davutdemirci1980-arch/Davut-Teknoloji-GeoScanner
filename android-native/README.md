@@ -25,6 +25,24 @@ korunmuştur.
   oluşturma (derinlik katmanlı ekstrüzyon)
 - **Diller:** Türkçe, İngilizce, Fransızca (`values-tr`, `values-fr`)
 
+## Otomatik APK Derlemesi (GitHub Actions)
+
+Bilgisayarınıza hiçbir şey kurmadan APK almak isterseniz: bu depoya her
+`android-native/` içine push yapıldığında GitHub Actions otomatik olarak
+bir debug APK derler.
+
+1. GitHub'da depoyu açın → **Actions** sekmesi → **Android APK Build**
+   iş akışını seçin.
+2. Otomatik tetiklenmediyse sağ üstten **Run workflow** ile elle başlatın.
+3. Derleme bitince (birkaç dakika sürer) çalışan iş akışının sayfasına girip
+   en altta **Artifacts** bölümünden `geoscanner-debug-apk` dosyasını indirin
+   — içinde kurulabilir `.apk` dosyası olacaktır.
+
+Bu, imzasız bir **debug** APK'sıdır (test/kendi cihazınıza kurmak için
+yeterlidir). Play Store'a yüklenecek imzalı bir **release** APK'sı için
+aşağıdaki "Android Studio'da Açma ve Derleme" bölümündeki imzalama
+adımlarını izlemeniz gerekir.
+
 ## Android Studio'da Açma ve Derleme
 
 1. Android Studio'yu açın → **Open** → bu `android-native` klasörünü seçin.
