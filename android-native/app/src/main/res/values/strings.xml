@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="about_info">GeoScanner Pro v1.0\n\nVoxler &amp; Surfer Compatible\nSupports: 7ESX, CSV, VTK, GRD, DAT\n\nBLE Ground Scanner Interface</string>
-    <string name="app_name">Davut Teknoloji</string>
+    <string name="app_name">Yer Altı Tarayıcı</string>
     <string name="cancel">Cancel</string>
     <string name="dialog_connected">Connected!</string>
     <string name="dialog_connecting">Connecting…</string>
