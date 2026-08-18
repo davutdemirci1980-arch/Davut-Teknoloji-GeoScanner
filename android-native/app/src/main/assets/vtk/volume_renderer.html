@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>4D Voxler Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;overflow:hidden;touch-action:none;}
+canvas{display:block;width:100vw;height:100vh;touch-action:none;}
+#info{position:absolute;top:8px;left:8px;color:#0f0;font:10px monospace;z-index:100;pointer-events:none;}
+#loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font:16px sans-serif;text-align:center;z-index:200;}
+#loading .sp{width:50px;height:50px;border:3px solid #333;border-top-color:#0ef;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 15px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading.hidden{display:none;}
+</style>
+</head>
+<body>
+<div id="loading"><div class="sp"></div><div>4D Voxler Pro</div></div>
+<div id="info"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ================================================================
+// THREE.JS 4D VOXLER PRO
+// ================================================================
+var scene, camera, renderer, controls;
+var gridCols=0, gridRows=0, stepSize=30;
+var gridData=null, volumeData=null;
+var volX=0, volY=0, volZ=20;
+var dataMinC=0, dataMaxC=1, dataRangeC=1;
+
+// Groups for different render modes
+var scatterGroup, isoGroup, volumeGroup, hfGroup, contourGroup, boxGroup, axesGroup;
+var showScatter=false, showIso=true, showVolume=false, showHF=false, showContours=false;
+var showBox=true, showAxes=true, autoRotating=false;
+
+// Extra feature groups
+var gradientGroup, streamGroup, sliceGroup, signalMapGroup, gridOverlayGroup;
+var showGradient=false, showStream=false, showSlice=false, showSignalMap=false, showGridOverlay=false;
+var sliceAnimRunning=false, sliceAnimFrame=0, sliceAnimSpeed=1;
+var scatterPointSize=0.12, volumeOpacity=0.7, currentPower=1;
+var currentColorMap='jet';
+
+// Layers
+var layerEnabled=[true,true,true,true];
+var layerIsoValues=[0.25,0.5,0.75,0.95];
+var layerColors=[[1,0.2,0.2],[1,1,0.2],[0.2,1,0.2],[0.3,0.5,1]];
+
+// HF / Contour
+var hfWarp=1.0, hfOpacity=0.8, hfOrientation=0;
+var contourLevels=8, contourOffset=0.5;
+var contourWallLeft=false, contourWallRight=false, contourWallBack=false, contourWallFront=false, contourWallFloor=true;
+var csvAnomalyRegions=[];
+
+// Touch rotation
+var isDragging=false, prevX=0, prevY=0;
+var rotX=-0.4, rotY=0.6;
+var camDist=3.5, panX=0, panY=0;
+var pinchDist=0, touchMode='rotate';
+
+// Color map
+function jet(t){
+    t=Math.max(0,Math.min(1,t));
+    if(t<0.25) return new THREE.Color(0,4*t,1);
+    if(t<0.5) return new THREE.Color(0,1,1-4*(t-0.25));
+    if(t<0.75) return new THREE.Color(4*(t-0.5),1,0);
+    return new THREE.Color(1,1-4*(t-0.75),0);
+}
+
+// Rainbow2: Kırmızı→Beyaz, Mavi→Siyah (ters kontrast)
+function rainbow2(t){
+    t=Math.max(0,Math.min(1,t));
+    if(t<0.2){
+        // Siyah → Koyu mavi
+        var f=t/0.2;
+        return new THREE.Color(0,0,f*0.3);
+    } else if(t<0.4){
+        // Koyu mavi → Mavi-mor
+        var f=(t-0.2)/0.2;
+        return new THREE.Color(f*0.2,0,0.3+f*0.4);
+    } else if(t<0.6){
+        // Mavi-mor → Gri
+        var f=(t-0.4)/0.2;
+        return new THREE.Color(0.2+f*0.4,f*0.4,0.7-f*0.3);
+    } else if(t<0.8){
+        // Gri → Açık pembe
+        var f=(t-0.6)/0.2;
+        return new THREE.Color(0.6+f*0.3,0.4+f*0.3,0.4+f*0.3);
+    } else {
+        // Açık pembe → Beyaz
+        var f=(t-0.8)/0.2;
+        return new THREE.Color(0.9+f*0.1,0.7+f*0.3,0.7+f*0.3);
+    }
+}
+
+// Rainbow1: Standart gokkusagi - mor,mavi,cyan,yesil,sari,turuncu,kirmizi
+function rainbow1(t){
+    t=Math.max(0,Math.min(1,t));
+    if(t<0.143){
+        var f=t/0.143;
+        return new THREE.Color(0.5*(1-f),0,0.5+0.5*f); // mor->mavi
+    } else if(t<0.286){
+        var f=(t-0.143)/0.143;
+        return new THREE.Color(0,f,1); // mavi->cyan
+    } else if(t<0.429){
+        var f=(t-0.286)/0.143;
+        return new THREE.Color(0,1,1-f); // cyan->yesil
+    } else if(t<0.571){
+        var f=(t-0.429)/0.143;
+        return new THREE.Color(f,1,0); // yesil->sari
+    } else if(t<0.714){
+        var f=(t-0.571)/0.143;
+        return new THREE.Color(1,1-f*0.5,0); // sari->turuncu
+    } else if(t<0.857){
+        var f=(t-0.714)/0.143;
+        return new THREE.Color(1,0.5-0.5*f,0); // turuncu->kirmizi
+    } else {
+        var f=(t-0.857)/0.143;
+        return new THREE.Color(1,0,f*0.3); // kirmizi->koyu kirmizi
+    }
+}
+
+function getColor(t){
+    if(currentColorMap==='rainbow1') return rainbow1(t);
+    if(currentColorMap==='rainbow2') return rainbow2(t);
+    return jet(t);
+}
+
+function init(){
+    // Scene
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020210);
+
+    // Camera
+    camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 100);
+    updateCamera();
+
+    // Renderer
+    renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+
+    // Lights
+    var ambient = new THREE.AmbientLight(0x404040, 0.6);
+    scene.add(ambient);
+    var dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(2,3,4);
+    scene.add(dirLight);
+    var dirLight2 = new THREE.DirectionalLight(0x8888ff, 0.3);
+    dirLight2.position.set(-2,-1,-2);
+    scene.add(dirLight2);
+
+    // Groups
+    scatterGroup = new THREE.Group(); scene.add(scatterGroup);
+    isoGroup = new THREE.Group(); scene.add(isoGroup);
+    volumeGroup = new THREE.Group(); scene.add(volumeGroup);
+    hfGroup = new THREE.Group(); scene.add(hfGroup);
+    contourGroup = new THREE.Group(); scene.add(contourGroup);
+    boxGroup = new THREE.Group(); scene.add(boxGroup);
+    axesGroup = new THREE.Group(); scene.add(axesGroup);
+    gradientGroup = new THREE.Group(); scene.add(gradientGroup);
+    streamGroup = new THREE.Group(); scene.add(streamGroup);
+    sliceGroup = new THREE.Group(); scene.add(sliceGroup);
+    signalMapGroup = new THREE.Group(); scene.add(signalMapGroup);
+    gridOverlayGroup = new THREE.Group(); scene.add(gridOverlayGroup);
+
+    buildBox();
+    buildAxes();
+    setupTouch();
+
+    document.getElementById('loading').classList.add('hidden');
+    if(window.Android && window.Android.onVtkReady) window.Android.onVtkReady();
+
+    animate();
+}
+
+function updateCamera(){
+    var ex = camDist*Math.sin(rotY)*Math.cos(rotX) + panX;
+    var ey = camDist*Math.sin(rotX) + panY;
+    var ez = camDist*Math.cos(rotY)*Math.cos(rotX);
+    camera.position.set(ex, ey, ez);
+    camera.lookAt(panX, panY, 0);
+}
+
+function animate(){
+    requestAnimationFrame(animate);
+    if(autoRotating) { rotY+=0.008; updateCamera(); }
+
+    scatterGroup.visible = showScatter;
+    isoGroup.visible = showIso;
+    volumeGroup.visible = showVolume;
+    hfGroup.visible = showHF;
+    contourGroup.visible = showContours;
+    boxGroup.visible = showBox;
+    axesGroup.visible = showAxes;
+    gradientGroup.visible = showGradient;
+    streamGroup.visible = showStream;
+    sliceGroup.visible = showSlice;
+    signalMapGroup.visible = showSignalMap;
+    gridOverlayGroup.visible = showGridOverlay;
+
+    // Slice animation
+    if(sliceAnimRunning){
+        sliceAnimFrame+=sliceAnimSpeed*0.02;
+        if(sliceAnimFrame>1) sliceAnimFrame=0;
+        updateSlicePlane(sliceAnimFrame);
+    }
+
+    renderer.render(scene, camera);
+}
+
+// ================================================================
+// TOUCH CONTROLS - 360 DEGREE
+// ================================================================
+function setupTouch(){
+    var el = renderer.domElement;
+
+    el.addEventListener('touchstart', function(e){
+        e.preventDefault();
+        if(e.touches.length===1){
+            isDragging=true; touchMode='rotate';
+            prevX=e.touches[0].clientX; prevY=e.touches[0].clientY;
+        } else if(e.touches.length===2){
+            isDragging=true; touchMode='pinch';
+            var dx=e.touches[1].clientX-e.touches[0].clientX;
+            var dy=e.touches[1].clientY-e.touches[0].clientY;
+            pinchDist=Math.sqrt(dx*dx+dy*dy);
+            prevX=(e.touches[0].clientX+e.touches[1].clientX)/2;
+            prevY=(e.touches[0].clientY+e.touches[1].clientY)/2;
+        }
+    },{passive:false});
+
+    el.addEventListener('touchmove', function(e){
+        e.preventDefault();
+        if(!isDragging) return;
+        if(e.touches.length===1 && touchMode==='rotate'){
+            var dx=e.touches[0].clientX-prevX, dy=e.touches[0].clientY-prevY;
+            rotY += dx*0.008;
+            rotX += dy*0.008;
+            prevX=e.touches[0].clientX; prevY=e.touches[0].clientY;
+            updateCamera();
+        } else if(e.touches.length===2 && touchMode==='pinch'){
+            var dx=e.touches[1].clientX-e.touches[0].clientX;
+            var dy=e.touches[1].clientY-e.touches[0].clientY;
+            var d=Math.sqrt(dx*dx+dy*dy);
+            camDist *= pinchDist/d;
+            camDist=Math.max(0.5,Math.min(15,camDist));
+            pinchDist=d;
+            var cx=(e.touches[0].clientX+e.touches[1].clientX)/2;
+            var cy=(e.touches[0].clientY+e.touches[1].clientY)/2;
+            panX+=(cx-prevX)*0.003; panY-=(cy-prevY)*0.003;
+            prevX=cx; prevY=cy;
+            updateCamera();
+        }
+    },{passive:false});
+
+    el.addEventListener('touchend', function(e){
+        e.preventDefault();
+        if(e.touches.length===0) isDragging=false;
+        else if(e.touches.length===1){
+            touchMode='rotate'; prevX=e.touches[0].clientX; prevY=e.touches[0].clientY;
+        }
+    },{passive:false});
+
+    // Mouse
+    el.addEventListener('mousedown',function(e){isDragging=true;touchMode=e.button===2?'pan':'rotate';prevX=e.clientX;prevY=e.clientY;});
+    el.addEventListener('mousemove',function(e){if(!isDragging)return;var dx=e.clientX-prevX,dy=e.clientY-prevY;if(touchMode==='rotate'){rotY+=dx*0.005;rotX+=dy*0.005;}else{panX+=dx*0.003;panY-=dy*0.003;}prevX=e.clientX;prevY=e.clientY;updateCamera();});
+    el.addEventListener('mouseup',function(){isDragging=false;});
+    el.addEventListener('wheel',function(e){camDist*=e.deltaY>0?1.1:0.9;camDist=Math.max(0.5,Math.min(15,camDist));updateCamera();});
+    el.addEventListener('contextmenu',function(e){e.preventDefault();});
+
+    window.addEventListener('resize',function(){
+        camera.aspect=window.innerWidth/window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth,window.innerHeight);
+    });
+}
+
+// ================================================================
+// BOX & AXES
+// ================================================================
+function buildBox(){
+    clearGroup(boxGroup);
+    var geo = new THREE.BoxGeometry(2,2,2);
+    var edges = new THREE.EdgesGeometry(geo);
+    var mat = new THREE.LineBasicMaterial({color:0x4466aa, linewidth:1});
+    boxGroup.add(new THREE.LineSegments(edges, mat));
+}
+
+function buildAxes(){
+    clearGroup(axesGroup);
+    var L=1.4;
+    // X axis - red
+    addLine(axesGroup, [0,0,0],[L,0,0], 0xff4444);
+    // Y axis - green
+    addLine(axesGroup, [0,0,0],[0,L,0], 0x44ff44);
+    // Z axis - blue
+    addLine(axesGroup, [0,0,0],[0,0,L], 0x4488ff);
+}
+
+function addLine(group, from, to, color){
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([from[0],from[1],from[2],to[0],to[1],to[2]],3));
+    group.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({color:color})));
+}
+
+function clearGroup(g){
+    while(g.children.length>0){
+        var c=g.children[0];
+        if(c.geometry) c.geometry.dispose();
+        if(c.material) c.material.dispose();
+        g.remove(c);
+    }
+}
+
+// ================================================================
+// DATA PROCESSING
+// ================================================================
+function processGridData(){
+    if(!gridData||gridCols===0||gridRows===0) return;
+    console.log('processGridData: '+gridCols+'x'+gridRows+' len='+gridData.length);
+
+    dataMinC=Infinity; dataMaxC=-Infinity;
+    for(var i=0;i<gridData.length;i++){
+        if(gridData[i]<dataMinC) dataMinC=gridData[i];
+        if(gridData[i]>dataMaxC) dataMaxC=gridData[i];
+    }
+    dataRangeC=dataMaxC-dataMinC; if(dataRangeC===0) dataRangeC=1;
+
+    // Build 3D volume
+    volX=gridCols; volY=gridRows; volZ=Math.max(10, Math.min(20, Math.round((gridCols+gridRows)/2)));
+    volumeData=new Uint8Array(volX*volY*volZ);
+    for(var gy=0;gy<gridRows;gy++){
+        for(var gx=0;gx<gridCols;gx++){
+            var val=(gridData[gy*gridCols+gx]-dataMinC)/dataRangeC;
+            for(var gz=0;gz<volZ;gz++){
+                var zN=gz/(volZ-1);
+                var g=Math.exp(-0.5*Math.pow((zN-0.35)/0.25,2));
+                volumeData[gz*volX*volY+gy*volX+gx]=Math.round(Math.max(0,Math.min(255,val*g*255)));
+            }
+        }
+    }
+
+    buildScatter();
+    buildIso();
+    buildVolPoints();
+    buildHF();
+    buildContourLines();
+    autoFitCamera();
+    updateInfo();
+    console.log('processGridData complete');
+}
+
+function autoFitCamera(){
+    var maxDim = Math.max(gridCols, gridRows, volZ);
+    if(maxDim<=8) camDist=3.2;
+    else if(maxDim<=15) camDist=3.8;
+    else if(maxDim<=25) camDist=4.5;
+    else camDist=5.5;
+    rotX=-0.35; rotY=0.6; panX=0; panY=0;
+    updateCamera();
+}
+
+// ================================================================
+// SCATTER - Yuvarlak küreler + sayısal değer etiketleri
+// ================================================================
+var sphereGeoCache=null;
+
+function makeValueLabel(text, color, labelScale){
+    var canvas = document.createElement('canvas');
+    canvas.width=256; canvas.height=96;
+    var ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,256,96);
+    // Arka plan (yarı saydam siyah)
+    ctx.fillStyle='rgba(0,0,0,0.6)';
+    ctx.fillRect(10,10,236,76);
+    // Metin
+    ctx.font='bold 48px Arial, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.strokeStyle='#000'; ctx.lineWidth=5;
+    ctx.strokeText(text,128,48);
+    ctx.fillStyle=color;
+    ctx.fillText(text,128,48);
+    var tex=new THREE.CanvasTexture(canvas);
+    tex.minFilter=THREE.LinearFilter;
+    tex.needsUpdate=true;
+    var mat=new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false, sizeAttenuation:true});
+    var sprite=new THREE.Sprite(mat);
+    var w=labelScale*0.5;
+    sprite.scale.set(w, w*0.375, 1);
+    return sprite;
+}
+
+function buildScatter(){
+    clearGroup(scatterGroup);
+    if(!gridData) return;
+    var cDiv=Math.max(gridCols-1,1), rDiv=Math.max(gridRows-1,1);
+    var totalPts=gridCols*gridRows;
+
+    // Küre ve etiket boyutunu grid boyutuna göre ayarla
+    var sphereRadius=0.06;
+    var labelScale=0.5;
+    if(totalPts>30){ sphereRadius=0.05; labelScale=0.45; }
+    if(totalPts>80){ sphereRadius=0.04; labelScale=0.38; }
+    if(totalPts>200){ sphereRadius=0.03; labelScale=0.30; }
+    if(totalPts>500){ sphereRadius=0.025; labelScale=0.25; }
+
+    // Tek bir SphereGeometry paylaş (performans)
+    if(!sphereGeoCache || sphereGeoCache._radius!==sphereRadius){
+        sphereGeoCache=new THREE.SphereGeometry(sphereRadius,16,12);
+        sphereGeoCache._radius=sphereRadius;
+    }
+
+    for(var gy=0;gy<gridRows;gy++){
+        for(var gx=0;gx<gridCols;gx++){
+            var rawVal=gridData[gy*gridCols+gx];
+            var val=(rawVal-dataMinC)/dataRangeC;
+            var x=(gx/cDiv)*2-1;
+            var y=val*1.6-0.8;
+            var z=-((gy/rDiv)*2-1);
+            var c=getColor(val);
+
+            // Yuvarlak küre
+            var sphereMat=new THREE.MeshPhongMaterial({
+                color:new THREE.Color(c.r,c.g,c.b),
+                shininess:80,
+                specular:new THREE.Color(0.3,0.3,0.3)
+            });
+            var sphere=new THREE.Mesh(sphereGeoCache, sphereMat);
+            sphere.position.set(x,y,z);
+            scatterGroup.add(sphere);
+
+            // Sayısal değer etiketi - her kürenin üstünde
+            var txt;
+            if(Math.abs(rawVal)>=1000) txt=Math.round(rawVal).toString();
+            else if(Math.abs(rawVal)>=100) txt=Math.round(rawVal).toString();
+            else if(Math.abs(rawVal)>=10) txt=rawVal.toFixed(1);
+            else txt=rawVal.toFixed(2);
+            var hexColor='#'+((1<<24)+(Math.round(c.r*255)<<16)+(Math.round(c.g*255)<<8)+Math.round(c.b*255)).toString(16).slice(1);
+            var label=makeValueLabel(txt, hexColor, labelScale);
+            label.position.set(x, y+sphereRadius+labelScale*0.12, z);
+            scatterGroup.add(label);
+        }
+    }
+}
+
+// ================================================================
+// ISO SURFACE - Marching Cubes
+// ================================================================
+var MC_EDGE=[
+0x0,0x109,0x203,0x30a,0x406,0x50f,0x605,0x70c,0x80c,0x905,0xa0f,0xb06,0xc0a,0xd03,0xe09,0xf00,
+0x190,0x99,0x393,0x29a,0x596,0x49f,0x795,0x69c,0x99c,0x895,0xb9f,0xa96,0xd9a,0xc93,0xf99,0xe90,
+0x230,0x339,0x33,0x13a,0x636,0x73f,0x435,0x53c,0xa3c,0xb35,0x83f,0x936,0xe3a,0xf33,0xc39,0xd30,
+0x3a0,0x2a9,0x1a3,0xaa,0x7a6,0x6af,0x5a5,0x4ac,0xbac,0xaa5,0x9af,0x8a6,0xfaa,0xea3,0xda9,0xca0,
+0x460,0x569,0x663,0x76a,0x66,0x16f,0x265,0x36c,0xc6c,0xd65,0xe6f,0xf66,0x86a,0x963,0xa69,0xb60,
+0x5f0,0x4f9,0x7f3,0x6fa,0x1f6,0xff,0x3f5,0x2fc,0xdfc,0xcf5,0xfff,0xef6,0x9fa,0x8f3,0xbf9,0xaf0,
+0x650,0x759,0x453,0x55a,0x256,0x35f,0x55,0x15c,0xe5c,0xf55,0xc5f,0xd56,0xa5a,0xb53,0x859,0x950,
+0x7c0,0x6c9,0x5c3,0x4ca,0x3c6,0x2cf,0x1c5,0xcc,0xfcc,0xec5,0xdcf,0xcc6,0xbca,0xac3,0x9c9,0x8c0,
+0x8c0,0x9c9,0xac3,0xbca,0xcc6,0xdcf,0xec5,0xfcc,0xcc,0x1c5,0x2cf,0x3c6,0x4ca,0x5c3,0x6c9,0x7c0,
+0x950,0x859,0xb53,0xa5a,0xd56,0xc5f,0xf55,0xe5c,0x15c,0x55,0x35f,0x256,0x55a,0x453,0x759,0x650,
+0xaf0,0xbf9,0x8f3,0x9fa,0xef6,0xfff,0xcf5,0xdfc,0x2fc,0x3f5,0xff,0x1f6,0x6fa,0x7f3,0x4f9,0x5f0,
+0xb60,0xa69,0x963,0x86a,0xf66,0xe6f,0xd65,0xc6c,0x36c,0x265,0x16f,0x66,0x76a,0x663,0x569,0x460,
+0xca0,0xda9,0xea3,0xfaa,0x8a6,0x9af,0xaa5,0xbac,0x4ac,0x5a5,0x6af,0x7a6,0xaa,0x1a3,0x2a9,0x3a0,
+0xd30,0xc39,0xf33,0xe3a,0x936,0x83f,0xb35,0xa3c,0x53c,0x435,0x73f,0x636,0x13a,0x33,0x339,0x230,
+0xe90,0xf99,0xc93,0xd9a,0xa96,0xb9f,0x895,0x99c,0x69c,0x795,0x49f,0x596,0x29a,0x393,0x99,0x190,
+0xf00,0xe09,0xd03,0xc0a,0xb06,0xa0f,0x905,0x80c,0x70c,0x605,0x50f,0x406,0x30a,0x203,0x109,0x0
+];
+
+var MC_TRI=new Array(256);
+for(var i=0;i<256;i++) MC_TRI[i]=null;
+</script>
+<script>
+// MC Triangle table - populated inline
+MC_TRI[0x01]=[0,8,3];MC_TRI[0x02]=[0,1,9];MC_TRI[0x03]=[1,8,3,9,8,1];
+MC_TRI[0x04]=[1,2,10];MC_TRI[0x05]=[0,8,3,1,2,10];MC_TRI[0x06]=[9,2,10,0,2,9];
+MC_TRI[0x07]=[2,8,3,2,10,8,10,9,8];MC_TRI[0x08]=[3,11,2];MC_TRI[0x09]=[0,11,2,8,11,0];
+MC_TRI[0x0a]=[1,9,0,2,3,11];MC_TRI[0x0b]=[1,11,2,1,9,11,9,8,11];
+MC_TRI[0x0c]=[3,10,1,11,10,3];MC_TRI[0x0d]=[0,10,1,0,8,10,8,11,10];
+MC_TRI[0x0e]=[3,9,0,3,11,9,11,10,9];MC_TRI[0x0f]=[9,8,10,10,8,11];
+MC_TRI[0x10]=[4,7,8];MC_TRI[0x11]=[4,3,0,7,3,4];MC_TRI[0x12]=[0,1,9,8,4,7];
+MC_TRI[0x13]=[4,1,9,4,7,1,7,3,1];MC_TRI[0x14]=[1,2,10,8,4,7];
+MC_TRI[0x15]=[3,4,7,3,0,4,1,2,10];MC_TRI[0x16]=[9,2,10,9,0,2,8,4,7];
+MC_TRI[0x17]=[2,10,9,2,9,7,2,7,3,7,9,4];MC_TRI[0x18]=[8,4,7,3,11,2];
+MC_TRI[0x19]=[11,4,7,11,2,4,2,0,4];MC_TRI[0x1a]=[9,0,1,8,4,7,2,3,11];
+MC_TRI[0x1b]=[4,7,11,9,4,11,9,11,2,9,2,1];MC_TRI[0x1c]=[3,10,1,3,11,10,7,8,4];
+MC_TRI[0x1d]=[1,11,10,1,4,11,1,0,4,7,11,4];MC_TRI[0x1e]=[4,7,8,9,0,11,9,11,10,11,0,3];
+MC_TRI[0x1f]=[4,7,11,4,11,9,9,11,10];MC_TRI[0x20]=[9,5,4];MC_TRI[0x21]=[9,5,4,0,8,3];
+MC_TRI[0x22]=[0,5,4,1,5,0];MC_TRI[0x23]=[8,5,4,8,3,5,3,1,5];
+MC_TRI[0x24]=[1,2,10,9,5,4];MC_TRI[0x25]=[3,0,8,1,2,10,4,9,5];
+MC_TRI[0x26]=[5,2,10,5,4,2,4,0,2];MC_TRI[0x27]=[2,10,5,3,2,5,3,5,4,3,4,8];
+MC_TRI[0x28]=[9,5,4,2,3,11];MC_TRI[0x29]=[0,11,2,0,8,11,4,9,5];
+MC_TRI[0x2a]=[0,5,4,0,1,5,2,3,11];MC_TRI[0x2b]=[2,1,5,2,5,8,2,8,11,4,8,5];
+MC_TRI[0x2c]=[10,3,11,10,1,3,9,5,4];MC_TRI[0x2d]=[4,9,5,0,8,1,8,10,1,8,11,10];
+MC_TRI[0x2e]=[5,4,0,5,0,11,5,11,10,11,0,3];MC_TRI[0x2f]=[5,4,8,5,8,10,10,8,11];
+MC_TRI[0x30]=[9,7,8,5,7,9];MC_TRI[0x31]=[9,3,0,9,5,3,5,7,3];
+MC_TRI[0x32]=[0,7,8,0,1,7,1,5,7];MC_TRI[0x33]=[1,5,3,3,5,7];
+MC_TRI[0x34]=[9,7,8,9,5,7,10,1,2];MC_TRI[0x35]=[10,1,2,9,5,0,5,3,0,5,7,3];
+MC_TRI[0x36]=[8,0,2,8,2,5,8,5,7,10,5,2];MC_TRI[0x37]=[2,10,5,2,5,3,3,5,7];
+MC_TRI[0x38]=[7,9,5,7,8,9,3,11,2];MC_TRI[0x39]=[9,5,7,9,7,2,9,2,0,2,7,11];
+MC_TRI[0x3a]=[2,3,11,0,1,8,1,7,8,1,5,7];MC_TRI[0x3b]=[11,2,1,11,1,7,7,1,5];
+MC_TRI[0x3c]=[9,5,8,8,5,7,10,1,3,10,3,11];MC_TRI[0x3d]=[5,7,0,5,0,9,7,11,0,1,0,10,11,10,0];
+MC_TRI[0x3e]=[11,10,0,11,0,3,10,5,0,8,0,7,5,7,0];MC_TRI[0x3f]=[11,10,5,7,11,5];
+MC_TRI[0x40]=[10,6,5];MC_TRI[0x41]=[0,8,3,5,10,6];MC_TRI[0x42]=[9,0,1,5,10,6];
+MC_TRI[0x43]=[1,8,3,1,9,8,5,10,6];MC_TRI[0x44]=[1,6,5,2,6,1];
+MC_TRI[0x45]=[1,6,5,1,2,6,3,0,8];MC_TRI[0x46]=[9,6,5,9,0,6,0,2,6];
+MC_TRI[0x47]=[5,9,8,5,8,2,5,2,6,3,2,8];MC_TRI[0x48]=[2,3,11,10,6,5];
+MC_TRI[0x49]=[11,0,8,11,2,0,10,6,5];MC_TRI[0x4a]=[0,1,9,2,3,11,5,10,6];
+MC_TRI[0x4b]=[5,10,6,1,9,2,9,11,2,9,8,11];MC_TRI[0x4c]=[6,3,11,6,5,3,5,1,3];
+MC_TRI[0x4d]=[0,8,11,0,11,5,0,5,1,5,11,6];MC_TRI[0x4e]=[3,11,6,0,3,6,0,6,5,0,5,9];
+MC_TRI[0x4f]=[6,5,9,6,9,11,11,9,8];MC_TRI[0x50]=[5,10,6,4,7,8];
+MC_TRI[0x51]=[4,3,0,4,7,3,6,5,10];MC_TRI[0x52]=[1,9,0,5,10,6,8,4,7];
+MC_TRI[0x53]=[10,6,5,1,9,7,1,7,3,7,9,4];MC_TRI[0x54]=[6,1,2,6,5,1,4,7,8];
+MC_TRI[0x55]=[1,2,5,5,2,6,3,0,4,3,4,7];MC_TRI[0x56]=[8,4,7,9,0,5,0,6,5,0,2,6];
+MC_TRI[0x57]=[7,3,9,7,9,4,3,2,9,5,9,6,2,6,9];MC_TRI[0x58]=[3,11,2,7,8,4,10,6,5];
+MC_TRI[0x59]=[5,10,6,4,7,2,4,2,0,2,7,11];MC_TRI[0x5a]=[0,1,9,4,7,8,2,3,11,5,10,6];
+MC_TRI[0x5b]=[9,2,1,9,11,2,9,4,11,7,11,4,5,10,6];MC_TRI[0x5c]=[8,4,7,3,11,5,3,5,1,5,11,6];
+MC_TRI[0x5d]=[5,1,11,5,11,6,1,0,11,7,11,4,0,4,11];MC_TRI[0x5e]=[0,5,9,0,6,5,0,3,6,11,6,3,8,4,7];
+MC_TRI[0x5f]=[6,5,9,6,9,11,4,7,9,7,11,9];MC_TRI[0x60]=[10,4,9,6,4,10];
+MC_TRI[0x61]=[4,10,6,4,9,10,0,8,3];MC_TRI[0x62]=[10,0,1,10,6,0,6,4,0];
+MC_TRI[0x63]=[8,3,1,8,1,6,8,6,4,6,1,10];MC_TRI[0x64]=[1,4,9,1,2,4,2,6,4];
+MC_TRI[0x65]=[3,0,8,1,2,4,2,6,4];MC_TRI[0x66]=[0,2,4,4,2,6];
+MC_TRI[0x67]=[8,3,2,8,2,4,4,2,6];MC_TRI[0x68]=[10,4,9,10,6,4,11,2,3];
+MC_TRI[0x69]=[0,8,2,2,8,11,4,9,10,4,10,6];MC_TRI[0x6a]=[3,11,2,0,1,6,0,6,4,6,1,10];
+MC_TRI[0x6b]=[6,4,1,6,1,10,4,8,1,2,1,11,8,11,1];MC_TRI[0x6c]=[9,6,4,9,3,6,9,1,3,11,6,3];
+MC_TRI[0x6d]=[8,11,1,8,1,0,11,6,1,9,1,4,6,4,1];MC_TRI[0x6e]=[3,11,6,3,6,0,0,6,4];
+MC_TRI[0x6f]=[6,4,8,11,6,8];MC_TRI[0x70]=[7,10,6,7,8,10,8,9,10];
+MC_TRI[0x71]=[0,7,3,0,10,7,0,9,10,6,7,10];MC_TRI[0x72]=[10,6,7,1,10,7,1,7,8,1,8,0];
+MC_TRI[0x73]=[10,6,7,10,7,1,1,7,3];MC_TRI[0x74]=[1,2,6,1,6,8,1,8,9,8,6,7];
+MC_TRI[0x75]=[2,6,9,2,9,1,6,7,9,0,9,3,7,3,9];MC_TRI[0x76]=[7,8,0,7,0,6,6,0,2];
+MC_TRI[0x77]=[7,3,2,6,7,2];MC_TRI[0x78]=[2,3,11,10,6,8,10,8,9,8,6,7];
+MC_TRI[0x79]=[2,0,7,2,7,11,0,9,7,6,7,10,9,10,7];MC_TRI[0x7a]=[1,8,0,1,7,8,1,10,7,6,7,10,2,3,11];
+MC_TRI[0x7b]=[11,2,1,11,1,7,10,6,1,6,7,1];MC_TRI[0x7c]=[8,9,6,8,6,7,9,1,6,11,6,3,1,3,6];
+MC_TRI[0x7d]=[0,9,1,11,6,7];MC_TRI[0x7e]=[7,8,0,7,0,6,3,11,0,11,6,0];
+MC_TRI[0x7f]=[7,11,6];MC_TRI[0x80]=[7,6,11];MC_TRI[0x81]=[3,0,8,11,7,6];
+MC_TRI[0x82]=[0,1,9,11,7,6];MC_TRI[0x83]=[8,1,9,8,3,1,11,7,6];
+MC_TRI[0x84]=[10,1,2,6,11,7];MC_TRI[0x85]=[1,2,10,3,0,8,6,11,7];
+MC_TRI[0x86]=[2,9,0,2,10,9,6,11,7];MC_TRI[0x87]=[6,11,7,2,10,3,10,8,3,10,9,8];
+MC_TRI[0x88]=[7,2,3,6,2,7];MC_TRI[0x89]=[7,0,8,7,6,0,6,2,0];
+MC_TRI[0x8a]=[2,7,6,2,3,7,0,1,9];MC_TRI[0x8b]=[1,6,2,1,8,6,1,9,8,8,7,6];
+MC_TRI[0x8c]=[10,7,6,10,1,7,1,3,7];MC_TRI[0x8d]=[10,7,6,1,7,10,1,8,7,1,0,8];
+MC_TRI[0x8e]=[0,3,7,0,7,10,0,10,9,6,10,7];MC_TRI[0x8f]=[7,6,10,7,10,8,8,10,9];
+MC_TRI[0x90]=[6,8,4,11,8,6];MC_TRI[0x91]=[3,6,11,3,0,6,0,4,6];
+MC_TRI[0x92]=[8,6,11,8,4,6,9,0,1];MC_TRI[0x93]=[9,4,6,9,6,3,9,3,1,11,3,6];
+MC_TRI[0x94]=[6,8,4,6,11,8,2,10,1];MC_TRI[0x95]=[1,2,10,3,0,11,0,6,11,0,4,6];
+MC_TRI[0x96]=[4,11,8,4,6,11,0,2,9,2,10,9];MC_TRI[0x97]=[10,9,3,10,3,2,9,4,3,11,3,6,4,6,3];
+MC_TRI[0x98]=[8,2,3,8,4,2,4,6,2];MC_TRI[0x99]=[0,4,2,4,6,2];
+MC_TRI[0x9a]=[1,9,0,2,3,4,2,4,6,4,3,8];MC_TRI[0x9b]=[1,9,4,1,4,2,2,4,6];
+MC_TRI[0x9c]=[8,1,3,8,6,1,8,4,6,6,10,1];MC_TRI[0x9d]=[10,1,0,10,0,6,6,0,4];
+MC_TRI[0x9e]=[4,6,3,4,3,8,6,10,3,0,3,9,10,9,3];MC_TRI[0x9f]=[10,9,4,6,10,4];
+MC_TRI[0xa0]=[4,9,5,7,6,11];MC_TRI[0xa1]=[0,8,3,4,9,5,11,7,6];
+MC_TRI[0xa2]=[5,0,1,5,4,0,7,6,11];MC_TRI[0xa3]=[11,7,6,8,3,4,3,5,4,3,1,5];
+MC_TRI[0xa4]=[9,5,4,10,1,2,7,6,11];MC_TRI[0xa5]=[6,11,7,1,2,10,0,8,3,4,9,5];
+MC_TRI[0xa6]=[7,6,11,5,4,10,4,2,10,4,0,2];MC_TRI[0xa7]=[3,4,8,3,5,4,3,2,5,10,5,2,11,7,6];
+MC_TRI[0xa8]=[7,2,3,7,6,2,5,4,9];MC_TRI[0xa9]=[9,5,4,0,8,6,0,6,2,6,8,7];
+MC_TRI[0xaa]=[3,6,2,3,7,6,1,5,0,5,4,0];MC_TRI[0xab]=[6,2,8,6,8,7,2,1,8,4,8,5,1,5,8];
+MC_TRI[0xac]=[9,5,4,10,1,6,1,7,6,1,3,7];MC_TRI[0xad]=[1,6,10,1,7,6,1,0,7,8,7,0,9,5,4];
+MC_TRI[0xae]=[4,0,10,4,10,5,0,3,10,6,10,7,3,7,10];MC_TRI[0xaf]=[7,6,10,7,10,8,5,4,10,4,8,10];
+MC_TRI[0xb0]=[6,9,5,6,11,9,11,8,9];MC_TRI[0xb1]=[3,6,11,0,6,3,0,5,6,0,9,5];
+MC_TRI[0xb2]=[0,11,8,0,5,11,0,1,5,5,6,11];MC_TRI[0xb3]=[6,11,3,6,3,5,5,3,1];
+MC_TRI[0xb4]=[1,2,10,9,5,11,9,11,8,11,5,6];MC_TRI[0xb5]=[0,11,3,0,6,11,0,9,6,5,6,9,1,2,10];
+MC_TRI[0xb6]=[11,8,5,11,5,6,8,0,5,10,5,2,0,2,5];MC_TRI[0xb7]=[6,11,3,6,3,5,2,10,3,10,5,3];
+MC_TRI[0xb8]=[5,8,9,5,2,8,5,6,2,3,8,2];MC_TRI[0xb9]=[9,5,6,9,6,0,0,6,2];
+MC_TRI[0xba]=[1,5,8,1,8,0,5,6,8,3,8,2,6,2,8];MC_TRI[0xbb]=[1,5,6,2,1,6];
+MC_TRI[0xbc]=[1,3,6,1,6,10,3,8,6,5,6,9,8,9,6];MC_TRI[0xbd]=[10,1,0,10,0,6,9,5,0,5,6,0];
+MC_TRI[0xbe]=[0,3,8,5,6,10];MC_TRI[0xbf]=[10,5,6];MC_TRI[0xc0]=[11,5,10,7,5,11];
+MC_TRI[0xc1]=[11,5,10,11,7,5,8,3,0];MC_TRI[0xc2]=[5,11,7,5,10,11,1,9,0];
+MC_TRI[0xc3]=[10,7,5,10,11,7,9,8,1,8,3,1];MC_TRI[0xc4]=[11,1,2,11,7,1,7,5,1];
+MC_TRI[0xc5]=[0,8,3,1,2,7,1,7,5,7,2,11];MC_TRI[0xc6]=[9,7,5,9,2,7,9,0,2,2,11,7];
+MC_TRI[0xc7]=[7,5,2,7,2,11,5,9,2,3,2,8,9,8,2];MC_TRI[0xc8]=[2,5,10,2,3,5,3,7,5];
+MC_TRI[0xc9]=[8,2,0,8,5,2,8,7,5,10,2,5];MC_TRI[0xca]=[9,0,1,5,10,3,5,3,7,3,10,2];
+MC_TRI[0xcb]=[9,8,2,9,2,1,8,7,2,10,2,5,7,5,2];MC_TRI[0xcc]=[1,3,5,3,7,5];
+MC_TRI[0xcd]=[0,8,7,0,7,1,1,7,5];MC_TRI[0xce]=[9,0,3,9,3,5,5,3,7];MC_TRI[0xcf]=[9,8,7,5,9,7];
+MC_TRI[0xd0]=[5,8,4,5,10,8,10,11,8];MC_TRI[0xd1]=[5,0,4,5,11,0,5,10,11,11,3,0];
+MC_TRI[0xd2]=[0,1,9,8,4,10,8,10,11,10,4,5];MC_TRI[0xd3]=[10,11,4,10,4,5,11,3,4,9,4,1,3,1,4];
+MC_TRI[0xd4]=[2,5,1,2,8,5,2,11,8,4,5,8];MC_TRI[0xd5]=[0,4,11,0,11,3,4,5,11,2,11,1,5,1,11];
+MC_TRI[0xd6]=[0,2,5,0,5,9,2,11,5,4,5,8,11,8,5];MC_TRI[0xd7]=[9,4,5,2,11,3];
+MC_TRI[0xd8]=[2,5,10,3,5,2,3,4,5,3,8,4];MC_TRI[0xd9]=[5,10,2,5,2,4,4,2,0];
+MC_TRI[0xda]=[3,10,2,3,5,10,3,8,5,4,5,8,0,1,9];MC_TRI[0xdb]=[5,10,2,5,2,4,1,9,2,9,4,2];
+MC_TRI[0xdc]=[8,4,5,8,5,3,3,5,1];MC_TRI[0xdd]=[0,4,5,1,0,5];
+MC_TRI[0xde]=[8,4,5,8,5,3,9,0,5,0,3,5];MC_TRI[0xdf]=[9,4,5];
+MC_TRI[0xe0]=[4,11,7,4,9,11,9,10,11];MC_TRI[0xe1]=[0,8,3,4,9,7,9,11,7,9,10,11];
+MC_TRI[0xe2]=[1,10,11,1,11,4,1,4,0,7,4,11];MC_TRI[0xe3]=[3,1,4,3,4,8,1,10,4,7,4,11,10,11,4];
+MC_TRI[0xe4]=[4,11,7,9,11,4,9,2,11,9,1,2];MC_TRI[0xe5]=[9,7,4,9,11,7,9,1,11,2,11,1,0,8,3];
+MC_TRI[0xe6]=[11,7,4,11,4,2,2,4,0];MC_TRI[0xe7]=[11,7,4,11,4,2,8,3,4,3,2,4];
+MC_TRI[0xe8]=[2,9,10,2,7,9,2,3,7,7,4,9];MC_TRI[0xe9]=[9,10,7,9,7,4,10,2,7,8,7,0,2,0,7];
+MC_TRI[0xea]=[3,7,10,3,10,2,7,4,10,1,10,0,4,0,10];MC_TRI[0xeb]=[1,10,2,8,7,4];
+MC_TRI[0xec]=[4,9,1,4,1,7,7,1,3];MC_TRI[0xed]=[4,9,1,4,1,7,0,8,1,8,7,1];
+MC_TRI[0xee]=[4,0,3,7,4,3];MC_TRI[0xef]=[4,8,7];MC_TRI[0xf0]=[9,10,8,10,11,8];
+MC_TRI[0xf1]=[3,0,9,3,9,11,11,9,10];MC_TRI[0xf2]=[0,1,10,0,10,8,8,10,11];
+MC_TRI[0xf3]=[3,1,10,11,3,10];MC_TRI[0xf4]=[1,2,11,1,11,9,9,11,8];
+MC_TRI[0xf5]=[3,0,9,3,9,11,1,2,9,2,11,9];MC_TRI[0xf6]=[0,2,11,8,0,11];
+MC_TRI[0xf7]=[3,2,11];MC_TRI[0xf8]=[2,3,8,2,8,10,10,8,9];
+MC_TRI[0xf9]=[9,10,2,0,9,2];MC_TRI[0xfa]=[2,3,8,2,8,10,0,1,8,1,10,8];
+MC_TRI[0xfb]=[1,10,2];MC_TRI[0xfc]=[1,3,8,9,1,8];MC_TRI[0xfd]=[0,9,1];MC_TRI[0xfe]=[0,3,8];
+</script>
+<script>
+function buildIso(){
+    clearGroup(isoGroup);
+    if(!volumeData) return;
+
+    for(var li=0;li<4;li++){
+        if(!layerEnabled[li]) continue;
+        var iso=layerIsoValues[li]*255;
+        var col=layerColors[li];
+        var positions=[], normals=[];
+
+        var EP=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+
+        for(var z=0;z<volZ-1;z++){
+            for(var y=0;y<volY-1;y++){
+                for(var x=0;x<volX-1;x++){
+                    var v0=volumeData[z*volX*volY+y*volX+x];
+                    var v1=volumeData[z*volX*volY+y*volX+x+1];
+                    var v2=volumeData[z*volX*volY+(y+1)*volX+x];
+                    var v3=volumeData[z*volX*volY+(y+1)*volX+x+1];
+                    var v4=volumeData[(z+1)*volX*volY+y*volX+x];
+                    var v5=volumeData[(z+1)*volX*volY+y*volX+x+1];
+                    var v6=volumeData[(z+1)*volX*volY+(y+1)*volX+x];
+                    var v7=volumeData[(z+1)*volX*volY+(y+1)*volX+x+1];
+
+                    var ci=0;
+                    if(v0>=iso) ci|=1; if(v1>=iso) ci|=2;
+                    if(v2>=iso) ci|=4; if(v3>=iso) ci|=8;
+                    if(v4>=iso) ci|=16; if(v5>=iso) ci|=32;
+                    if(v6>=iso) ci|=64; if(v7>=iso) ci|=128;
+                    if(ci===0||ci===255) continue;
+
+                    var edge=MC_EDGE[ci];
+                    if(edge===0) continue;
+
+                    var vv=[v0,v1,v2,v3,v4,v5,v6,v7];
+                    var cx=[x,x+1,x,x+1,x,x+1,x,x+1];
+                    var cy=[y,y,y+1,y+1,y,y,y+1,y+1];
+                    var cz=[z,z,z,z,z+1,z+1,z+1,z+1];
+
+                    var ev=[];
+                    for(var e=0;e<12;e++){
+                        if(edge&(1<<e)){
+                            var a=EP[e][0],b=EP[e][1];
+                            var t=(iso-vv[a])/(vv[b]-vv[a]||1);
+                            t=Math.max(0,Math.min(1,t));
+                            ev[e]=[(cx[a]+(cx[b]-cx[a])*t)/(volX-1)*2-1,
+                                   (cz[a]+(cz[b]-cz[a])*t)/(volZ-1)*2-1,
+                                   -((cy[a]+(cy[b]-cy[a])*t)/(volY-1)*2-1)];
+                        }
+                    }
+
+                    var tri=MC_TRI[ci];
+                    if(!tri) continue;
+                    for(var ti=0;ti<tri.length;ti+=3){
+                        var p0=ev[tri[ti]],p1=ev[tri[ti+1]],p2=ev[tri[ti+2]];
+                        if(!p0||!p1||!p2) continue;
+                        // Normal
+                        var ax=p1[0]-p0[0],ay=p1[1]-p0[1],az=p1[2]-p0[2];
+                        var bx=p2[0]-p0[0],by=p2[1]-p0[1],bz=p2[2]-p0[2];
+                        var nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;
+                        var nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+                        nx/=nl;ny/=nl;nz/=nl;
+                        positions.push(p0[0],p0[1],p0[2], p1[0],p1[1],p1[2], p2[0],p2[1],p2[2]);
+                        normals.push(nx,ny,nz, nx,ny,nz, nx,ny,nz);
+                    }
+                }
+            }
+        }
+
+        if(positions.length>0){
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+            geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals,3));
+            var mat = new THREE.MeshPhongMaterial({
+                color: new THREE.Color(col[0],col[1],col[2]),
+                transparent:true, opacity:0.7, side:THREE.DoubleSide,
+                shininess:30, flatShading:false
+            });
+            isoGroup.add(new THREE.Mesh(geo, mat));
+        }
+    }
+    updateInfo();
+}
+
+// ================================================================
+// VOLUME RENDERING - Yarı saydam dilim katmanları
+// ================================================================
+function buildVolPoints(){
+    clearGroup(volumeGroup);
+    if(!volumeData) return;
+    var xDiv=Math.max(volX-1,1), yDiv=Math.max(volY-1,1), zDiv=Math.max(volZ-1,1);
+
+    // Her Z dilimi için yarı saydam yüzey oluştur
+    var sliceStep=Math.max(1, Math.floor(volZ/16)); // Max 16 dilim performans için
+    for(var z=0;z<volZ;z+=sliceStep){
+        var positions=[], colors=[], alphas=[];
+        var hasData=false;
+        for(var y=0;y<volY-1;y++){
+            for(var x=0;x<volX-1;x++){
+                var v00=volumeData[z*volX*volY+y*volX+x]/255;
+                var v10=volumeData[z*volX*volY+y*volX+x+1]/255;
+                var v01=volumeData[z*volX*volY+(y+1)*volX+x]/255;
+                var v11=volumeData[z*volX*volY+(y+1)*volX+x+1]/255;
+                var avg=(v00+v10+v01+v11)/4;
+                if(avg<0.05) continue; // Boş voxel atla
+                hasData=true;
+                var x0=(x/xDiv)*2-1, x1=((x+1)/xDiv)*2-1;
+                var zPos=(z/zDiv)*2-1;
+                var y0=-((y/yDiv)*2-1), y1=-(((y+1)/yDiv)*2-1);
+                // Tri 1
+                positions.push(x0,zPos,y0, x1,zPos,y0, x0,zPos,y1);
+                // Tri 2
+                positions.push(x1,zPos,y0, x1,zPos,y1, x0,zPos,y1);
+                var c00=getColor(v00),c10=getColor(v10),c01=getColor(v01),c11=getColor(v11);
+                colors.push(c00.r,c00.g,c00.b, c10.r,c10.g,c10.b, c01.r,c01.g,c01.b);
+                colors.push(c10.r,c10.g,c10.b, c11.r,c11.g,c11.b, c01.r,c01.g,c01.b);
+            }
+        }
+        if(hasData && positions.length>0){
+            var geo=new THREE.BufferGeometry();
+            geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+            geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+            var mat=new THREE.MeshBasicMaterial({
+                vertexColors:true, transparent:true,
+                opacity:volumeOpacity*0.3, side:THREE.DoubleSide,
+                depthWrite:false, blending:THREE.AdditiveBlending
+            });
+            volumeGroup.add(new THREE.Mesh(geo,mat));
+        }
+    }
+
+    // Ayrıca yüksek değerli voxelleri küre olarak göster
+    var sphereGeo=new THREE.SphereGeometry(0.04,8,6);
+    var vStep=Math.max(1,Math.floor(Math.max(volX,volY,volZ)/12));
+    for(var z=0;z<volZ;z+=vStep){
+        for(var y=0;y<volY;y+=vStep){
+            for(var x=0;x<volX;x+=vStep){
+                var val=volumeData[z*volX*volY+y*volX+x]/255;
+                if(val<0.3) continue;
+                var px=(x/xDiv)*2-1, py=(z/zDiv)*2-1, pz=-((y/yDiv)*2-1);
+                var c=getColor(val);
+                var mat=new THREE.MeshPhongMaterial({color:new THREE.Color(c.r,c.g,c.b),transparent:true,opacity:val*volumeOpacity});
+                var mesh=new THREE.Mesh(sphereGeo,mat);
+                mesh.position.set(px,py,pz);
+                volumeGroup.add(mesh);
+            }
+        }
+    }
+}
+
+// ================================================================
+// HEIGHT FIELD
+// ================================================================
+function buildHF(){
+    clearGroup(hfGroup);
+    if(!gridData||gridCols<2||gridRows<2) return;
+    var positions=[], colors=[], normals=[];
+    var cDiv=Math.max(gridCols-1,1), rDiv=Math.max(gridRows-1,1);
+
+    for(var gy=0;gy<gridRows-1;gy++){
+        for(var gx=0;gx<gridCols-1;gx++){
+            var n00=(gridData[gy*gridCols+gx]-dataMinC)/dataRangeC;
+            var n10=(gridData[gy*gridCols+gx+1]-dataMinC)/dataRangeC;
+            var n01=(gridData[(gy+1)*gridCols+gx]-dataMinC)/dataRangeC;
+            var n11=(gridData[(gy+1)*gridCols+gx+1]-dataMinC)/dataRangeC;
+            var x0=(gx/cDiv)*2-1, x1=((gx+1)/cDiv)*2-1;
+            var z0=-((gy/rDiv)*2-1), z1=-(((gy+1)/rDiv)*2-1);
+
+            // Tri 1
+            pushTriHF(positions,colors,normals, x0,n00*hfWarp*2-1,z0, x1,n10*hfWarp*2-1,z0, x0,n01*hfWarp*2-1,z1, n00,n10,n01);
+            // Tri 2
+            pushTriHF(positions,colors,normals, x1,n10*hfWarp*2-1,z0, x1,n11*hfWarp*2-1,z1, x0,n01*hfWarp*2-1,z1, n10,n11,n01);
+        }
+    }
+    if(positions.length>0){
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(colors,3));
+        geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals,3));
+        var mat = new THREE.MeshPhongMaterial({vertexColors:true, transparent:true, opacity:hfOpacity, side:THREE.DoubleSide, shininess:20});
+        hfGroup.add(new THREE.Mesh(geo, mat));
+    }
+}
+
+function pushTriHF(P,C,N, x0,y0,z0, x1,y1,z1, x2,y2,z2, v0,v1,v2){
+    P.push(x0,y0,z0, x1,y1,z1, x2,y2,z2);
+    var c0=getColor(v0),c1=getColor(v1),c2=getColor(v2);
+    C.push(c0.r,c0.g,c0.b, c1.r,c1.g,c1.b, c2.r,c2.g,c2.b);
+    var ax=x1-x0,ay=y1-y0,az=z1-z0, bx=x2-x0,by=y2-y0,bz=z2-z0;
+    var nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;
+    var nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1; nx/=nl;ny/=nl;nz/=nl;
+    N.push(nx,ny,nz, nx,ny,nz, nx,ny,nz);
+}
+
+// ================================================================
+// CONTOUR LINES - Anomali bazlı dinamik kontur
+// ================================================================
+var contourFilterCode='none';
+var contourAnomalyMode=true; // Anomali bölgelerinde kalınlaş ve renk değiş
+
+function buildContourLines(){
+    clearGroup(contourGroup);
+    if(!gridData||gridCols<2||gridRows<2) return;
+    var cDiv=Math.max(gridCols-1,1), rDiv=Math.max(gridRows-1,1);
+
+    // Filtre uygulanmış veri kullan
+    var useData=gridData;
+    if(contourFilterCode!=='none'){
+        useData=applyJSFilter(gridData, gridCols, gridRows, contourFilterCode);
+    }
+
+    // Anomali tespiti için istatistik hesapla
+    var mean=0, std=0;
+    for(var i=0;i<useData.length;i++) mean+=useData[i];
+    mean/=useData.length;
+    for(var i=0;i<useData.length;i++) std+=(useData[i]-mean)*(useData[i]-mean);
+    std=Math.sqrt(std/useData.length);
+    var anomalyThLow=mean+std*1.0;  // Orta anomali
+    var anomalyThHigh=mean+std*2.0; // Güçlü anomali
+
+    // Kontur dolgu yüzeyi (filled contours)
+    var fillPositions=[], fillColors=[];
+    for(var gy=0;gy<gridRows-1;gy++){
+        for(var gx=0;gx<gridCols-1;gx++){
+            var n00=(useData[gy*gridCols+gx]-dataMinC)/dataRangeC;
+            var n10=(useData[gy*gridCols+gx+1]-dataMinC)/dataRangeC;
+            var n01=(useData[(gy+1)*gridCols+gx]-dataMinC)/dataRangeC;
+            var n11=(useData[(gy+1)*gridCols+gx+1]-dataMinC)/dataRangeC;
+            var x0=(gx/cDiv)*2-1, x1=((gx+1)/cDiv)*2-1;
+            var z0=-((gy/rDiv)*2-1), z1=-(((gy+1)/rDiv)*2-1);
+            var yOff=contourOffset*2-1;
+            var avg=(n00+n10+n01+n11)/4;
+            var c=getColor(avg);
+            // Anomali bölgesinde opasite artır
+            var rawAvg=(useData[gy*gridCols+gx]+useData[gy*gridCols+gx+1]+useData[(gy+1)*gridCols+gx]+useData[(gy+1)*gridCols+gx+1])/4;
+            var isAnomaly=rawAvg>anomalyThLow;
+            if(isAnomaly || avg>0.4){
+                fillPositions.push(x0,yOff,z0, x1,yOff,z0, x0,yOff,z1);
+                fillPositions.push(x1,yOff,z0, x1,yOff,z1, x0,yOff,z1);
+                var alpha=isAnomaly?(rawAvg>anomalyThHigh?0.6:0.35):0.15;
+                fillColors.push(c.r*alpha,c.g*alpha,c.b*alpha, c.r*alpha,c.g*alpha,c.b*alpha, c.r*alpha,c.g*alpha,c.b*alpha);
+                fillColors.push(c.r*alpha,c.g*alpha,c.b*alpha, c.r*alpha,c.g*alpha,c.b*alpha, c.r*alpha,c.g*alpha,c.b*alpha);
+            }
+        }
+    }
+    if(fillPositions.length>0){
+        var fGeo=new THREE.BufferGeometry();
+        fGeo.setAttribute('position',new THREE.Float32BufferAttribute(fillPositions,3));
+        fGeo.setAttribute('color',new THREE.Float32BufferAttribute(fillColors,3));
+        contourGroup.add(new THREE.Mesh(fGeo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.8,side:THREE.DoubleSide})));
+    }
+
+    // Kontur çizgileri
+    for(var lv=0;lv<contourLevels;lv++){
+        var iso=(lv+0.5)/contourLevels;
+        var cc=getColor(iso);
+        var positions=[];
+
+        for(var gy=0;gy<gridRows-1;gy++){
+            for(var gx=0;gx<gridCols-1;gx++){
+                var n00=(useData[gy*gridCols+gx]-dataMinC)/dataRangeC;
+                var n10=(useData[gy*gridCols+gx+1]-dataMinC)/dataRangeC;
+                var n01=(useData[(gy+1)*gridCols+gx]-dataMinC)/dataRangeC;
+                var n11=(useData[(gy+1)*gridCols+gx+1]-dataMinC)/dataRangeC;
+                var x0=(gx/cDiv)*2-1, x1=((gx+1)/cDiv)*2-1;
+                var z0=-((gy/rDiv)*2-1), z1=-(((gy+1)/rDiv)*2-1);
+                var yOff=contourOffset*2-1;
+                var cr=[];
+                if((n00>=iso)!==(n10>=iso)){var t=(iso-n00)/(n10-n00);cr.push([x0+t*(x1-x0),yOff,z0]);}
+                if((n10>=iso)!==(n11>=iso)){var t=(iso-n10)/(n11-n10);cr.push([x1,yOff,z0+t*(z1-z0)]);}
+                if((n01>=iso)!==(n11>=iso)){var t=(iso-n01)/(n11-n01);cr.push([x0+t*(x1-x0),yOff,z1]);}
+                if((n00>=iso)!==(n01>=iso)){var t=(iso-n00)/(n01-n00);cr.push([x0,yOff,z0+t*(z1-z0)]);}
+                if(cr.length>=2) positions.push(cr[0][0],cr[0][1],cr[0][2],cr[1][0],cr[1][1],cr[1][2]);
+                if(cr.length>=4) positions.push(cr[2][0],cr[2][1],cr[2][2],cr[3][0],cr[3][1],cr[3][2]);
+            }
+        }
+        if(positions.length>0){
+            // Anomali bölgelerinde farklı renk: yüksek iso = anomali
+            var lineColor=cc;
+            if(contourAnomalyMode && iso>0.6){
+                lineColor=new THREE.Color(1,0.1,0.1); // Kırmızı anomali
+            } else if(contourAnomalyMode && iso>0.4){
+                lineColor=new THREE.Color(1,0.8,0); // Sarı orta
+            }
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+            var mat = new THREE.LineBasicMaterial({color:lineColor, linewidth:iso>0.6?2:1});
+            contourGroup.add(new THREE.LineSegments(geo, mat));
+        }
+    }
+
+    // Anomali merkez noktalarını işaretle
+    if(contourAnomalyMode){
+        for(var gy=1;gy<gridRows-1;gy++){
+            for(var gx=1;gx<gridCols-1;gx++){
+                var val=useData[gy*gridCols+gx];
+                if(val>anomalyThHigh){
+                    var x=(gx/cDiv)*2-1, z=-((gy/rDiv)*2-1);
+                    var yOff=contourOffset*2-1;
+                    var ringGeo=new THREE.RingGeometry(0.03,0.06,16);
+                    var ringMat=new THREE.MeshBasicMaterial({color:0xff0000,side:THREE.DoubleSide,transparent:true,opacity:0.9});
+                    var ring=new THREE.Mesh(ringGeo,ringMat);
+                    ring.position.set(x,yOff+0.01,z);
+                    ring.rotation.x=-Math.PI/2;
+                    contourGroup.add(ring);
+                }
+            }
+        }
+    }
+
+    // === DUVARLAR - kullanici acip kapatabilir ===
+    if(contourWallLeft) buildWallContour(useData, gridCols, gridRows, cDiv, rDiv, dataMinC, dataRangeC, 'left');
+    if(contourWallRight) buildWallContour(useData, gridCols, gridRows, cDiv, rDiv, dataMinC, dataRangeC, 'right');
+    if(contourWallBack) buildWallContour(useData, gridCols, gridRows, cDiv, rDiv, dataMinC, dataRangeC, 'back');
+    if(contourWallFront) buildWallContour(useData, gridCols, gridRows, cDiv, rDiv, dataMinC, dataRangeC, 'front');
+
+    // === CSV ANOMALI ALGILAMA ===
+    csvAnomalyRegions=[];
+    for(var gy=1;gy<gridRows-1;gy++){
+        for(var gx=1;gx<gridCols-1;gx++){
+            var val=useData[gy*gridCols+gx];
+            if(val>anomalyThHigh){
+                var x=(gx/cDiv)*2-1, z=-((gy/rDiv)*2-1);
+                csvAnomalyRegions.push({x:gx,y:gy,val:val,nx:x,nz:z,sigma:(val-mean)/std});
+            }
+        }
+    }
+    // Anomali bolgelerinde 3D isaretci
+    for(var a=0;a<csvAnomalyRegions.length;a++){
+        var ar=csvAnomalyRegions[a];
+        var yOff=contourOffset*2-1;
+        // Dikey cizgi - anomali noktasindan yukari
+        var lineGeo=new THREE.BufferGeometry();
+        lineGeo.setAttribute('position',new THREE.Float32BufferAttribute([ar.nx,yOff,ar.nz, ar.nx,yOff+0.5,ar.nz],3));
+        contourGroup.add(new THREE.LineSegments(lineGeo,new THREE.LineBasicMaterial({color:0xff0000,linewidth:2})));
+        // Ust noktada kucuk kure
+        var sGeo=new THREE.SphereGeometry(0.025,8,6);
+        var sMat=new THREE.MeshBasicMaterial({color:0xff4444});
+        var sMesh=new THREE.Mesh(sGeo,sMat);
+        sMesh.position.set(ar.nx,yOff+0.52,ar.nz);
+        contourGroup.add(sMesh);
+    }
+}
+
+function buildWallContour(useData, cols, rows, cDiv, rDiv, dMin, dRange, side){
+    var nSlices=12;
+    // Her duvar icin ayri grup
+    var wallGroup=new THREE.Group();
+    wallGroup.name='wall_'+side;
+
+    if(side==='left' || side==='right'){
+        var colIdx = (side==='left') ? 0 : cols-1;
+        var xW = (side==='left') ? -1.02 : 1.02;
+        // Duvar yuzey mesh
+        for(var gy=0;gy<rows-1;gy++){
+            var n0=Math.max(0,Math.min(1,(useData[gy*cols+colIdx]-dMin)/dRange));
+            var n1=Math.max(0,Math.min(1,(useData[(gy+1)*cols+colIdx]-dMin)/dRange));
+            var z0=-((gy/rDiv)*2-1), z1=-(((gy+1)/rDiv)*2-1);
+            for(var gz=0;gz<nSlices-1;gz++){
+                var y0=(gz/(nSlices-1))*2-1, y1=((gz+1)/(nSlices-1))*2-1;
+                var zFrac=gz/(nSlices-1);
+                var val=n0*(1-zFrac)+0.5*zFrac; // Yukari dogru azal
+                var c=getColor(val);
+                var geo=new THREE.PlaneGeometry(Math.abs(z1-z0),Math.abs(y1-y0));
+                var mat=new THREE.MeshBasicMaterial({color:new THREE.Color(c.r,c.g,c.b),transparent:true,opacity:val>0.5?0.7:0.4,side:THREE.DoubleSide,depthWrite:false});
+                var mesh=new THREE.Mesh(geo,mat);
+                mesh.position.set(xW,(y0+y1)/2,(z0+z1)/2);
+                mesh.rotation.y=Math.PI/2;
+                wallGroup.add(mesh);
+            }
+        }
+        // Contour cizgileri duvar uzerinde
+        for(var lv=0;lv<contourLevels;lv++){
+            var isoVal=lv/(contourLevels-1);
+            var pts=[];
+            for(var gy=0;gy<rows;gy++){
+                var n=(useData[gy*cols+colIdx]-dMin)/dRange;
+                var z=-((gy/rDiv)*2-1);
+                var y=isoVal*2-1;
+                pts.push(new THREE.Vector3(xW,y,z));
+            }
+            if(pts.length>1){
+                var lGeo=new THREE.BufferGeometry().setFromPoints(pts);
+                var lc=getColor(isoVal);
+                wallGroup.add(new THREE.Line(lGeo,new THREE.LineBasicMaterial({color:new THREE.Color(lc.r,lc.g,lc.b),linewidth:2})));
+            }
+        }
+    } else {
+        var rowIdx = (side==='back') ? 0 : rows-1;
+        var zW = (side==='back') ? 1.02 : -1.02;
+        for(var gx=0;gx<cols-1;gx++){
+            var n0=Math.max(0,Math.min(1,(useData[rowIdx*cols+gx]-dMin)/dRange));
+            var n1=Math.max(0,Math.min(1,(useData[rowIdx*cols+gx+1]-dMin)/dRange));
+            var x0=(gx/cDiv)*2-1, x1=((gx+1)/cDiv)*2-1;
+            for(var gz=0;gz<nSlices-1;gz++){
+                var y0=(gz/(nSlices-1))*2-1, y1=((gz+1)/(nSlices-1))*2-1;
+                var zFrac=gz/(nSlices-1);
+                var val=n0*(1-zFrac)+0.5*zFrac;
+                var c=getColor(val);
+                var geo=new THREE.PlaneGeometry(Math.abs(x1-x0),Math.abs(y1-y0));
+                var mat=new THREE.MeshBasicMaterial({color:new THREE.Color(c.r,c.g,c.b),transparent:true,opacity:val>0.5?0.7:0.4,side:THREE.DoubleSide,depthWrite:false});
+                var mesh=new THREE.Mesh(geo,mat);
+                mesh.position.set((x0+x1)/2,(y0+y1)/2,zW);
+                wallGroup.add(mesh);
+            }
+        }
+        // Contour cizgileri duvar uzerinde
+        for(var lv=0;lv<contourLevels;lv++){
+            var isoVal=lv/(contourLevels-1);
+            var pts=[];
+            for(var gx=0;gx<cols;gx++){
+                var n=(useData[rowIdx*cols+gx]-dMin)/dRange;
+                var x=(gx/cDiv)*2-1;
+                var y=isoVal*2-1;
+                pts.push(new THREE.Vector3(x,y,zW));
+            }
+            if(pts.length>1){
+                var lGeo=new THREE.BufferGeometry().setFromPoints(pts);
+                var lc=getColor(isoVal);
+                wallGroup.add(new THREE.Line(lGeo,new THREE.LineBasicMaterial({color:new THREE.Color(lc.r,lc.g,lc.b),linewidth:2})));
+            }
+        }
+    }
+    contourGroup.add(wallGroup);
+}
+
+// ================================================================
+// JS TARAFINDA FİLTRE UYGULAMA (Contours için)
+// ================================================================
+function applyJSFilter(data, cols, rows, code){
+    var out=new Float32Array(data.length);
+    // 2D grid'e çevir
+    var grid=[];
+    for(var r=0;r<rows;r++){
+        grid[r]=[];
+        for(var c=0;c<cols;c++) grid[r][c]=data[r*cols+c];
+    }
+    var filtered=grid;
+    switch(code){
+        case 'gauss': filtered=jsGaussBlur(grid,rows,cols,1.5); break;
+        case 'median': filtered=jsMedianFilter(grid,rows,cols,3); break;
+        case 'sharpen': filtered=jsSharpen(grid,rows,cols,1.5); break;
+        case 'edge': filtered=jsSobelEdge(grid,rows,cols); break;
+        case 'rank': filtered=jsRankFilter(grid,rows,cols,3); break;
+        case 'histeq': filtered=jsHistEq(grid,rows,cols); break;
+        case 'bandpass': filtered=jsBandpass(grid,rows,cols,0.1,0.5); break;
+        case 'highpass': filtered=jsHighpass(grid,rows,cols); break;
+        case 'lowpass': filtered=jsLowpass(grid,rows,cols); break;
+        case 'gradient': filtered=jsGradientMag(grid,rows,cols); break;
+        case 'laplacian': filtered=jsLaplacian(grid,rows,cols); break;
+        case 'threshold': filtered=jsThreshold(grid,rows,cols); break;
+        case 'normalize': filtered=jsNormalize(grid,rows,cols); break;
+        case 'detrend': filtered=jsDetrend(grid,rows,cols); break;
+    }
+    for(var r=0;r<rows;r++)
+        for(var c=0;c<cols;c++) out[r*cols+c]=filtered[r][c];
+    return out;
+}
+
+// --- JS Filtre Fonksiyonları ---
+function jsGaussBlur(g,R,C,sigma){
+    var k=Math.ceil(sigma*3)*2+1, h=Math.floor(k/2), w=[], ws=0;
+    for(var i=0;i<k;i++){for(var j=0;j<k;j++){var v=Math.exp(-((i-h)*(i-h)+(j-h)*(j-h))/(2*sigma*sigma));w.push(v);ws+=v;}}
+    for(var i=0;i<w.length;i++) w[i]/=ws;
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++){var s=0;var idx=0;
+        for(var di=-h;di<=h;di++){for(var dj=-h;dj<=h;dj++){var ri=Math.max(0,Math.min(R-1,r+di)),ci=Math.max(0,Math.min(C-1,c+dj));s+=g[ri][ci]*w[idx++];}}
+        out[r][c]=s;}} return out;
+}
+function jsMedianFilter(g,R,C,k){
+    var h=Math.floor(k/2), out=[];
+    for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++){var vals=[];
+        for(var di=-h;di<=h;di++){for(var dj=-h;dj<=h;dj++){vals.push(g[Math.max(0,Math.min(R-1,r+di))][Math.max(0,Math.min(C-1,c+dj))]);}}
+        vals.sort(function(a,b){return a-b;}); out[r][c]=vals[Math.floor(vals.length/2)];}} return out;
+}
+function jsSharpen(g,R,C,s){
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++){
+        var center=g[r][c],nb=0,cnt=0;
+        if(r>0){nb+=g[r-1][c];cnt++;} if(r<R-1){nb+=g[r+1][c];cnt++;}
+        if(c>0){nb+=g[r][c-1];cnt++;} if(c<C-1){nb+=g[r][c+1];cnt++;}
+        out[r][c]=cnt>0?center+s*(center-nb/cnt):center;}} return out;
+}
+function jsSobelEdge(g,R,C){
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++) out[r][c]=0;}
+    for(var r=1;r<R-1;r++){for(var c=1;c<C-1;c++){
+        var gx=-g[r-1][c-1]+g[r-1][c+1]-2*g[r][c-1]+2*g[r][c+1]-g[r+1][c-1]+g[r+1][c+1];
+        var gy=-g[r-1][c-1]-2*g[r-1][c]-g[r-1][c+1]+g[r+1][c-1]+2*g[r+1][c]+g[r+1][c+1];
+        out[r][c]=Math.sqrt(gx*gx+gy*gy);}}
+    for(var r=0;r<R;r++){out[r][0]=out[r][Math.min(1,C-1)];out[r][C-1]=out[r][Math.max(0,C-2)];}
+    for(var c=0;c<C;c++){out[0][c]=out[Math.min(1,R-1)][c];out[R-1][c]=out[Math.max(0,R-2)][c];}
+    return out;
+}
+function jsRankFilter(g,R,C,k){
+    var h=Math.floor(k/2), out=[];
+    for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++){var cv=g[r][c],total=0,less=0;
+        for(var di=-h;di<=h;di++){for(var dj=-h;dj<=h;dj++){total++;if(g[Math.max(0,Math.min(R-1,r+di))][Math.max(0,Math.min(C-1,c+dj))]<cv)less++;}}
+        out[r][c]=less/total;}} return out;
+}
+function jsHistEq(g,R,C){
+    var mn=Infinity,mx=-Infinity;
+    for(var r=0;r<R;r++) for(var c=0;c<C;c++){if(g[r][c]<mn)mn=g[r][c];if(g[r][c]>mx)mx=g[r][c];}
+    var rng=mx-mn; if(rng===0) return g;
+    var bins=256, hist=new Array(bins).fill(0);
+    for(var r=0;r<R;r++) for(var c=0;c<C;c++){var b=Math.max(0,Math.min(bins-1,Math.floor((g[r][c]-mn)/rng*(bins-1))));hist[b]++;}
+    var cdf=new Array(bins); cdf[0]=hist[0]/(R*C);
+    for(var i=1;i<bins;i++) cdf[i]=cdf[i-1]+hist[i]/(R*C);
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++){
+        var b=Math.max(0,Math.min(bins-1,Math.floor((g[r][c]-mn)/rng*(bins-1))));out[r][c]=mn+cdf[b]*rng;}} return out;
+}
+function jsBandpass(g,R,C,lo,hi){
+    var low=jsGaussBlur(g,R,C,1.0/lo);
+    var high=jsGaussBlur(g,R,C,1.0/hi);
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++) out[r][c]=low[r][c]-high[r][c];} return out;
+}
+function jsHighpass(g,R,C){
+    var low=jsGaussBlur(g,R,C,2.0);
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++) out[r][c]=g[r][c]-low[r][c];} return out;
+}
+function jsLowpass(g,R,C){ return jsGaussBlur(g,R,C,2.0); }
+function jsGradientMag(g,R,C){
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++) out[r][c]=0;}
+    for(var r=1;r<R-1;r++){for(var c=1;c<C-1;c++){
+        var dx=(g[r][c+1]-g[r][c-1])/2, dy=(g[r+1][c]-g[r-1][c])/2;
+        out[r][c]=Math.sqrt(dx*dx+dy*dy);}}
+    return out;
+}
+function jsLaplacian(g,R,C){
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++) out[r][c]=0;}
+    for(var r=1;r<R-1;r++){for(var c=1;c<C-1;c++){
+        out[r][c]=g[r-1][c]+g[r+1][c]+g[r][c-1]+g[r][c+1]-4*g[r][c];}}
+    return out;
+}
+function jsThreshold(g,R,C){
+    var mean=0; for(var r=0;r<R;r++) for(var c=0;c<C;c++) mean+=g[r][c]; mean/=(R*C);
+    var std=0; for(var r=0;r<R;r++) for(var c=0;c<C;c++) std+=(g[r][c]-mean)*(g[r][c]-mean); std=Math.sqrt(std/(R*C));
+    var th=mean+std;
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++) out[r][c]=g[r][c]>th?g[r][c]:0;} return out;
+}
+function jsNormalize(g,R,C){
+    var mn=Infinity,mx=-Infinity;
+    for(var r=0;r<R;r++) for(var c=0;c<C;c++){if(g[r][c]<mn)mn=g[r][c];if(g[r][c]>mx)mx=g[r][c];}
+    var rng=mx-mn; if(rng===0) return g;
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++) out[r][c]=(g[r][c]-mn)/rng;} return out;
+}
+function jsDetrend(g,R,C){
+    // Lineer trend çıkarma (row ve column ortalamaları)
+    var rowMeans=new Array(R).fill(0), colMeans=new Array(C).fill(0), total=0;
+    for(var r=0;r<R;r++) for(var c=0;c<C;c++){rowMeans[r]+=g[r][c];colMeans[c]+=g[r][c];total+=g[r][c];}
+    for(var r=0;r<R;r++) rowMeans[r]/=C;
+    for(var c=0;c<C;c++) colMeans[c]/=R;
+    var grandMean=total/(R*C);
+    var out=[]; for(var r=0;r<R;r++){out[r]=[];for(var c=0;c<C;c++) out[r][c]=g[r][c]-rowMeans[r]-colMeans[c]+grandMean;} return out;
+}
+
+// ================================================================
+// INFO
+// ================================================================
+function updateInfo(){
+    var isoTri=0; isoGroup.children.forEach(function(c){if(c.geometry)isoTri+=c.geometry.attributes.position.count/3;});
+    var hfTri=0; hfGroup.children.forEach(function(c){if(c.geometry)hfTri+=c.geometry.attributes.position.count/3;});
+    var volPts=0; volumeGroup.children.forEach(function(c){if(c.geometry)volPts+=c.geometry.attributes.position.count;});
+    document.getElementById('info').innerHTML='Grid:'+gridCols+'x'+gridRows+' Vol:'+volX+'x'+volY+'x'+volZ+
+        ' ISO:'+(isoTri|0)+'tri HF:'+(hfTri|0)+'tri Vol:'+volPts+'pts';
+}
+
+// ================================================================
+// WINDOW.VTK API - Android Bridge
+// ================================================================
+window.VTK = {
+    resetCamera: function(){ autoFitCamera(); },
+    resetAll: function(){
+        this.resetCamera();
+        // Extra grupları temizle
+        showGradient=false; showStream=false; showSlice=false; showSignalMap=false; showGridOverlay=false;
+        sliceAnimRunning=false; autoRotating=false;
+        clearGroup(gradientGroup); clearGroup(streamGroup); clearGroup(sliceGroup);
+        clearGroup(signalMapGroup); clearGroup(gridOverlayGroup);
+    },
+    rotate: function(dx,dy){ rotY+=dx*0.01; rotX+=dy*0.01; updateCamera(); },
+    zoom: function(f){ camDist*=f; camDist=Math.max(0.5,Math.min(15,camDist)); updateCamera(); },
+    pan: function(dx,dy){ panX+=dx*0.01; panY+=dy*0.01; updateCamera(); },
+
+    setGridData: function(cols, rows, step, dataStr) {
+        console.log('setGridData: '+cols+'x'+rows);
+        gridCols=cols; gridRows=rows; stepSize=step;
+        var parts=dataStr.split(',');
+        gridData=new Float32Array(parts.length);
+        for(var i=0;i<parts.length;i++) gridData[i]=parseFloat(parts[i])||0;
+        processGridData();
+    },
+
+
+    setLayerIso: function(idx,val){ layerIsoValues[idx]=val; buildIso(); },
+    setLayerEnabled: function(idx,en){ layerEnabled[idx]=en; buildIso(); },
+    setLayerFilter: function(idx,code){
+        // Filter is applied on Java side and data is resent
+        console.log('Layer '+idx+' filter: '+code);
+    },
+    setLayerOpacity: function(idx,op){
+        // ISO katmanının opasitesini değiştir
+        var count=0;
+        isoGroup.children.forEach(function(c){
+            if(count===idx && c.material){ c.material.opacity=op; c.material.transparent=op<1; }
+            count++;
+        });
+    },
+    setLayerColorScale: function(idx,name){
+        // Katman renk skalasını değiştir
+        var colorSets={
+            'rainbow':[[1,0,0],[1,1,0],[0,1,0],[0,0,1]],
+            'hot':[[1,0,0],[1,0.5,0],[1,1,0],[1,1,1]],
+            'cool':[[0,0,1],[0,0.5,1],[0,1,1],[0.5,1,1]],
+            'earth':[[0.3,0.2,0.1],[0.5,0.4,0.2],[0.2,0.6,0.3],[0.1,0.3,0.6]]
+        };
+        if(colorSets[name]) layerColors=colorSets[name];
+        buildIso();
+    },
+    setOpacity: function(op){
+        // Genel opasite - tüm gruplara uygula
+        [isoGroup,volumeGroup,hfGroup,contourGroup].forEach(function(g){
+            g.children.forEach(function(c){ if(c.material){c.material.opacity=op;c.material.transparent=op<1;} });
+        });
+    },
+
+    setRenderMode: function(mode){
+        console.log('setRenderMode: '+mode);
+        if(mode==='contours'){
+            // Contours açılırken ISO açıksa kapanmasın - birlikte çalışsın
+            showContours=true;
+            showScatter=false;
+            showVolume=false;
+            showHF=false;
+            // showIso değişmez - mevcut durumunu korur
+        } else if(mode==='iso'){
+            showIso=true;
+            showScatter=false;
+            showVolume=false;
+            showHF=false;
+            // showContours değişmez
+        } else {
+            showScatter=(mode==='scatter');
+            showIso=(mode==='iso');
+            showVolume=(mode==='volume');
+            showHF=(mode==='heightfield');
+            showContours=false;
+        }
+    },
+
+    setShowBox: function(s){ showBox=s; },
+    setShowAxes: function(s){ showAxes=s; },
+    setShowIso: function(s){ showIso=s; },
+    setShowVolume: function(s){ showVolume=s; if(s&&volumeGroup.children.length===0) buildVolPoints(); },
+    setShowHeightField: function(s){ showHF=s; if(s&&hfGroup.children.length===0) buildHF(); },
+    setShowContours: function(s){ showContours=s; if(s&&contourGroup.children.length===0) buildContourLines(); },
+    setShowScatter: function(s){ showScatter=s; },
+
+    setHeightFieldWarp: function(w){ hfWarp=w; buildHF(); },
+    setHeightFieldOpacity: function(o){ hfOpacity=o; buildHF(); },
+    setHeightFieldOrientation: function(o){ hfOrientation=o; buildHF(); },
+
+    setContoursLevels: function(l){ contourLevels=l; buildContourLines(); if(showIso) buildIso(); },
+    setContoursOffset: function(o){ contourOffset=o; buildContourLines(); if(showIso) buildIso(); },
+    setContoursFilter: function(code){ contourFilterCode=code; buildContourLines(); },
+    setContoursOrientation: function(o){ /* Contour orientation */ buildContourLines(); },
+    toggleContourWall: function(side){
+        switch(side){
+            case 'left': contourWallLeft=!contourWallLeft; break;
+            case 'right': contourWallRight=!contourWallRight; break;
+            case 'back': contourWallBack=!contourWallBack; break;
+            case 'front': contourWallFront=!contourWallFront; break;
+            case 'floor': contourWallFloor=!contourWallFloor; break;
+            case 'all':
+                var allOn=contourWallLeft&&contourWallRight&&contourWallBack&&contourWallFront;
+                contourWallLeft=contourWallRight=contourWallBack=contourWallFront=!allOn;
+                break;
+        }
+        buildContourLines();
+        return JSON.stringify({left:contourWallLeft,right:contourWallRight,back:contourWallBack,front:contourWallFront,floor:contourWallFloor});
+    },
+    getAnomalyRegions: function(){
+        return JSON.stringify(csvAnomalyRegions);
+    },
+
+    toggleGradientArrows: function(){
+        showGradient=!showGradient;
+        if(showGradient && gradientGroup.children.length===0) buildGradientArrows();
+    },
+    toggleStreamlines: function(){
+        showStream=!showStream;
+        if(showStream && streamGroup.children.length===0) buildStreamlines();
+    },
+    toggleSliceAnimation: function(){
+        if(sliceAnimRunning){ sliceAnimRunning=false; clearGroup(sliceGroup); showSlice=false; }
+        else { sliceAnimRunning=true; showSlice=true; sliceAnimFrame=0; }
+    },
+    startSliceAnimation: function(){ sliceAnimRunning=true; showSlice=true; },
+    stopSliceAnimation: function(){ sliceAnimRunning=false; },
+    setSliceAnimationSpeed: function(s){ sliceAnimSpeed=s; },
+    setSlice: function(pos){ sliceAnimRunning=false; showSlice=true; updateSlicePlane(pos); },
+    clearSliceAnimation: function(){ sliceAnimRunning=false; showSlice=false; clearGroup(sliceGroup); },
+
+    setInteractiveTool: function(code){
+        if(code==='auto_rotate') autoRotating=!autoRotating;
+        else autoRotating=false;
+    },
+
+    applyPreset: function(code){
+        if(code==='metal'){
+            layerIsoValues=[0.4,0.6,0.8,0.95];
+            layerColors=[[1,0,0],[1,0.5,0],[1,1,0],[1,1,1]];
+        } else if(code==='void'){
+            layerIsoValues=[0.1,0.2,0.3,0.5];
+            layerColors=[[0,0,1],[0,0.5,1],[0,1,1],[0.5,1,1]];
+        } else {
+            layerIsoValues=[0.25,0.5,0.75,0.95];
+            layerColors=[[1,0.2,0.2],[1,1,0.2],[0.2,1,0.2],[0.3,0.5,1]];
+        }
+        buildIso();
+    },
+
+    runAnomalyDetection: function(t){
+        // Anomali noktalarını vurgula
+        if(!gridData) return;
+        var threshold=t||50;
+        var mean=0; for(var i=0;i<gridData.length;i++) mean+=gridData[i]; mean/=gridData.length;
+        var std=0; for(var i=0;i<gridData.length;i++) std+=(gridData[i]-mean)*(gridData[i]-mean); std=Math.sqrt(std/gridData.length);
+        var th=mean+std*(threshold/25);
+        evalJS("setLayerIso(0,"+(((th-dataMinC)/dataRangeC)||0.5)+")");
+        buildIso();
+    },
+    runDepthEstimation: function(){
+        if(window.Android) window.Android.showInfo('Derinlik tahmini: AI analizi kullan\u0131n');
+    },
+    runTargetClassification: function(){
+        if(window.Android) window.Android.showInfo('Hedef s\u0131n\u0131fland\u0131rma: AI analizi kullan\u0131n');
+    },
+    toggleSignalStrengthMap: function(){
+        showSignalMap=!showSignalMap;
+        if(showSignalMap && signalMapGroup.children.length===0) buildSignalMap();
+    },
+    toggleGridOverlay: function(){
+        showGridOverlay=!showGridOverlay;
+        if(showGridOverlay && gridOverlayGroup.children.length===0) buildGridOverlay();
+    },
+    setAnomalyFocus: function(x,y){
+        if(x!==undefined&&y!==undefined){
+            var cDiv=Math.max(gridCols-1,1),rDiv=Math.max(gridRows-1,1);
+            panX=(x/cDiv)*2-1; panY=0; updateCamera();
+        }
+    },
+    setMeshFactor: function(f){
+        // Mesh çözünürlüğü - volZ'yi değiştir ve yeniden oluştur
+        volZ=Math.max(5,Math.min(40,Math.round(f*20)));
+        if(gridData) processGridData();
+    },
+    autoAnalyze: function(){ this.runAnomalyDetection(50); },
+    exportMeshForAR: function(){ return {success:false}; },
+    setFilter: function(code){
+        // Global filtre uygula (JS tarafında)
+        if(!gridData||code==='none') return;
+        var filtered=applyJSFilter(gridData, gridCols, gridRows, code);
+        gridData=filtered;
+        processGridData();
+    },
+    setScatterPointSize: function(s){
+        scatterPointSize=s;
+        scatterGroup.children.forEach(function(c){
+            if(c.material && c.material.size!==undefined) c.material.size=s;
+        });
+    },
+    setVolumeOpacity: function(o){
+        volumeOpacity=o;
+        volumeGroup.children.forEach(function(c){
+            if(c.material) c.material.opacity=o;
+        });
+    },
+    setColorMap: function(name){ currentColorMap=name; processGridData(); },
+    setRainbow1: function(){ currentColorMap='rainbow1'; processGridData(); },
+    setRainbow2: function(){ currentColorMap='rainbow2'; processGridData(); },
+    setPower: function(p){ currentPower=p; processGridData(); }
+};
+
+// ================================================================
+// GRADIENT ARROWS - Sinyal gradyan ok yönleri
+// ================================================================
+function buildGradientArrows(){
+    clearGroup(gradientGroup);
+    if(!gridData||gridCols<2||gridRows<2) return;
+    var cDiv=Math.max(gridCols-1,1), rDiv=Math.max(gridRows-1,1);
+    var step=Math.max(1,Math.floor(Math.max(gridCols,gridRows)/10));
+    for(var gy=1;gy<gridRows-1;gy+=step){
+        for(var gx=1;gx<gridCols-1;gx+=step){
+            var dx=(gridData[gy*gridCols+gx+1]-gridData[gy*gridCols+gx-1])/(2*dataRangeC);
+            var dy=(gridData[(gy+1)*gridCols+gx]-gridData[(gy-1)*gridCols+gx])/(2*dataRangeC);
+            var mag=Math.sqrt(dx*dx+dy*dy);
+            if(mag<0.01) continue;
+            var x=(gx/cDiv)*2-1, z=-((gy/rDiv)*2-1);
+            var val=(gridData[gy*gridCols+gx]-dataMinC)/dataRangeC;
+            var y=val*1.6-0.8;
+            var len=Math.min(mag*3,0.3);
+            var ndx=dx/mag*len, ndy=dy/mag*len;
+            var geo=new THREE.BufferGeometry();
+            geo.setAttribute('position',new THREE.Float32BufferAttribute([x,y,z, x+ndx,y+0.05,z-ndy],3));
+            var c=getColor(val);
+            gradientGroup.add(new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:c})));
+            // Arrowhead
+            var aGeo=new THREE.ConeGeometry(0.02,0.06,4);
+            var aMat=new THREE.MeshBasicMaterial({color:c});
+            var cone=new THREE.Mesh(aGeo,aMat);
+            cone.position.set(x+ndx,y+0.05,z-ndy);
+            cone.lookAt(x+ndx*2,y+0.1,z-ndy*2);
+            gradientGroup.add(cone);
+        }
+    }
+}
+
+// ================================================================
+// STREAMLINES - Akış çizgileri
+// ================================================================
+function buildStreamlines(){
+    clearGroup(streamGroup);
+    if(!gridData||gridCols<3||gridRows<3) return;
+    var cDiv=Math.max(gridCols-1,1), rDiv=Math.max(gridRows-1,1);
+    var seeds=Math.min(12,Math.max(4,Math.floor(Math.sqrt(gridCols*gridRows)/2)));
+    for(var s=0;s<seeds;s++){
+        var sx=Math.random()*(gridCols-2)+1, sy=Math.random()*(gridRows-2)+1;
+        var pts=[];
+        for(var t=0;t<60;t++){
+            var gx=Math.floor(sx),gy=Math.floor(sy);
+            if(gx<1||gx>=gridCols-1||gy<1||gy>=gridRows-1) break;
+            var dx=(gridData[gy*gridCols+gx+1]-gridData[gy*gridCols+gx-1])/2;
+            var dy=(gridData[(gy+1)*gridCols+gx]-gridData[(gy-1)*gridCols+gx])/2;
+            var mag=Math.sqrt(dx*dx+dy*dy);
+            if(mag<0.0001) break;
+            sx+=dx/mag*0.5; sy+=dy/mag*0.5;
+            var x=(sx/cDiv)*2-1, z=-((sy/rDiv)*2-1);
+            var val=(gridData[gy*gridCols+gx]-dataMinC)/dataRangeC;
+            pts.push(new THREE.Vector3(x,val*1.6-0.8,z));
+        }
+        if(pts.length>2){
+            var curve=new THREE.CatmullRomCurve3(pts);
+            var geo=new THREE.TubeGeometry(curve,pts.length*2,0.008,4,false);
+            var c=getColor(Math.random());
+            streamGroup.add(new THREE.Mesh(geo,new THREE.MeshPhongMaterial({color:c,transparent:true,opacity:0.7})));
+        }
+    }
+}
+
+// ================================================================
+// SLICE ANIMATION - Dilim düzlemi
+// ================================================================
+function updateSlicePlane(pos){
+    clearGroup(sliceGroup);
+    if(!gridData||gridCols<2||gridRows<2) return;
+    var cDiv=Math.max(gridCols-1,1), rDiv=Math.max(gridRows-1,1);
+    var sliceY=pos*2-1;
+    var positions=[],colors=[];
+    for(var gy=0;gy<gridRows-1;gy++){
+        for(var gx=0;gx<gridCols-1;gx++){
+            var n00=(gridData[gy*gridCols+gx]-dataMinC)/dataRangeC;
+            var n10=(gridData[gy*gridCols+gx+1]-dataMinC)/dataRangeC;
+            var n01=(gridData[(gy+1)*gridCols+gx]-dataMinC)/dataRangeC;
+            var n11=(gridData[(gy+1)*gridCols+gx+1]-dataMinC)/dataRangeC;
+            var x0=(gx/cDiv)*2-1,x1=((gx+1)/cDiv)*2-1;
+            var z0=-((gy/rDiv)*2-1),z1=-(((gy+1)/rDiv)*2-1);
+            positions.push(x0,sliceY,z0, x1,sliceY,z0, x0,sliceY,z1);
+            positions.push(x1,sliceY,z0, x1,sliceY,z1, x0,sliceY,z1);
+            var c0=getColor(n00),c1=getColor(n10),c2=getColor(n01),c3=getColor(n11);
+            colors.push(c0.r,c0.g,c0.b, c1.r,c1.g,c1.b, c2.r,c2.g,c2.b);
+            colors.push(c1.r,c1.g,c1.b, c3.r,c3.g,c3.b, c2.r,c2.g,c2.b);
+        }
+    }
+    if(positions.length>0){
+        var geo=new THREE.BufferGeometry();
+        geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+        geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+        sliceGroup.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.6,side:THREE.DoubleSide})));
+    }
+}
+
+// ================================================================
+// SIGNAL STRENGTH MAP - Sinyal gücü haritası (zemin düzlemi)
+// ================================================================
+function buildSignalMap(){
+    clearGroup(signalMapGroup);
+    if(!gridData||gridCols<2||gridRows<2) return;
+    var cDiv=Math.max(gridCols-1,1), rDiv=Math.max(gridRows-1,1);
+    var positions=[],colors=[];
+    for(var gy=0;gy<gridRows-1;gy++){
+        for(var gx=0;gx<gridCols-1;gx++){
+            var n00=(gridData[gy*gridCols+gx]-dataMinC)/dataRangeC;
+            var n10=(gridData[gy*gridCols+gx+1]-dataMinC)/dataRangeC;
+            var n01=(gridData[(gy+1)*gridCols+gx]-dataMinC)/dataRangeC;
+            var n11=(gridData[(gy+1)*gridCols+gx+1]-dataMinC)/dataRangeC;
+            var x0=(gx/cDiv)*2-1,x1=((gx+1)/cDiv)*2-1;
+            var z0=-((gy/rDiv)*2-1),z1=-(((gy+1)/rDiv)*2-1);
+            var y=-1.05; // Küpün altında
+            positions.push(x0,y,z0, x1,y,z0, x0,y,z1);
+            positions.push(x1,y,z0, x1,y,z1, x0,y,z1);
+            var c0=getColor(n00),c1=getColor(n10),c2=getColor(n01),c3=getColor(n11);
+            colors.push(c0.r,c0.g,c0.b, c1.r,c1.g,c1.b, c2.r,c2.g,c2.b);
+            colors.push(c1.r,c1.g,c1.b, c3.r,c3.g,c3.b, c2.r,c2.g,c2.b);
+        }
+    }
+    if(positions.length>0){
+        var geo=new THREE.BufferGeometry();
+        geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+        geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+        signalMapGroup.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0.8,side:THREE.DoubleSide})));
+    }
+}
+
+// ================================================================
+// GRID OVERLAY - Izgara kaplaması
+// ================================================================
+function buildGridOverlay(){
+    clearGroup(gridOverlayGroup);
+    if(!gridData||gridCols<2||gridRows<2) return;
+    var cDiv=Math.max(gridCols-1,1), rDiv=Math.max(gridRows-1,1);
+    var positions=[];
+    var y=-0.99;
+    // X çizgileri
+    for(var gx=0;gx<gridCols;gx++){
+        var x=(gx/cDiv)*2-1;
+        positions.push(x,y,1, x,y,-1);
+    }
+    // Z çizgileri
+    for(var gy=0;gy<gridRows;gy++){
+        var z=-((gy/rDiv)*2-1);
+        positions.push(-1,y,z, 1,y,z);
+    }
+    if(positions.length>0){
+        var geo=new THREE.BufferGeometry();
+        geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+        gridOverlayGroup.add(new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:0x336699,transparent:true,opacity:0.5})));
+    }
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

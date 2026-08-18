@@ -1,0 +1,26 @@
+# Python / backend
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
+*.pyc
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-standalone/
+frontend/.vite/
+frontend/tsconfig.tsbuildinfo
+
+# Android (Capacitor) build output
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/capacitor-cordova-android-plugins/build/
+frontend/android/local.properties
+frontend/android/*.iml
+frontend/android/.idea/
+
+# OS / editor
+.DS_Store
+*.log

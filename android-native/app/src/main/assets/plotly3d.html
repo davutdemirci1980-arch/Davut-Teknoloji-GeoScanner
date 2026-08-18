@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #111; overflow: hidden; }
+  #plot { width: 100vw; height: 100vh; }
+  #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #00AAFF; font-family: monospace; font-size: 16px; z-index: 50; }
+  #interpLabel { position: fixed; bottom: 10px; right: 10px;
+    color: #FFD700; font-family: monospace; font-size: 12px;
+    background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; z-index: 50; }
+
+  /* Plotly modebar - beyaz, büyük, görünür */
+  .modebar { top: 5px !important; right: 5px !important; }
+  .modebar-btn { font-size: 20px !important; }
+  .modebar-btn path { fill: #FFFFFF !important; }
+  .modebar-btn:hover path { fill: #00CCFF !important; }
+  .modebar-btn.active path { fill: #FFD700 !important; }
+  .modebar-group { background: rgba(30,30,30,0.8) !important; border-radius: 6px !important; padding: 2px 4px !important; margin-left: 4px !important; }
+</style>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+<div id="loading">Loading 3D View...</div>
+<div id="plot"></div>
+<div id="interpLabel"></div>
+<script>
+var currentMode = 'surface';
+var plotInitialized = false;
+var lastCamera = null;
+
+// Kamera pozisyonunu kaydet (geçişlerde korunsun)
+function saveCamera() {
+    try {
+        var plotEl = document.getElementById('plot');
+        if (plotEl && plotEl._fullLayout && plotEl._fullLayout.scene && plotEl._fullLayout.scene._scene) {
+            lastCamera = plotEl._fullLayout.scene._scene.getCamera();
+        }
+    } catch(e) {}
+}
+
+function applyCamera() {
+    if (!lastCamera) return;
+    try {
+        Plotly.relayout('plot', { 'scene.camera': lastCamera });
+    } catch(e) {}
+}
+
+function showInterp(mode) {
+    var label = document.getElementById('interpLabel');
+    if (mode) {
+        label.textContent = 'Interpolation: ' + mode;
+        label.style.display = 'block';
+    } else {
+        label.style.display = 'none';
+    }
+}
+
+var plotConfig = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['toImage'],
+    displaylogo: false
+};
+
+function render3D(jsonData) {
+    document.getElementById('loading').style.display = 'none';
+    var data = JSON.parse(jsonData);
+
+    if (data.useSurfaceGrid && data.zGrid) {
+        renderSurfaceGrid(data.ux, data.uy, data.zGrid, data.interpMode);
+        return;
+    }
+
+    var x = data.x, y = data.y, z = data.z, c = data.c;
+    var ux = [...new Set(x)].sort((a,b) => a-b);
+    var uy = [...new Set(y)].sort((a,b) => a-b);
+    var nx = ux.length, ny = uy.length;
+    var grid = Array.from({length: ny}, () => Array(nx).fill(0));
+
+    for (var i = 0; i < x.length; i++) {
+        var xi = ux.indexOf(x[i]);
+        var yi = uy.indexOf(y[i]);
+        if (xi >= 0 && yi >= 0) {
+            grid[yi][xi] = c[i];
+        }
+    }
+
+    renderSurfaceGrid(ux, uy, grid, data.interpMode);
+}
+
+function renderSurfaceGrid(ux, uy, grid, interpMode) {
+    showInterp(interpMode);
+    saveCamera();
+
+    var trace = {
+        type: 'surface',
+        x: ux, y: uy, z: grid,
+        colorscale: [
+            [0, 'rgb(0,0,128)'], [0.15, 'rgb(0,0,255)'],
+            [0.3, 'rgb(0,255,255)'], [0.45, 'rgb(0,255,0)'],
+            [0.6, 'rgb(255,255,0)'], [0.75, 'rgb(255,128,0)'],
+            [0.9, 'rgb(255,0,0)'], [1, 'rgb(128,0,0)']
+        ],
+        showscale: true,
+        colorbar: { title: 'Anomaly', titlefont: {color:'#fff'}, tickfont: {color:'#aaa'} },
+        contours: {
+            z: { show: true, usecolormap: true, highlightcolor: '#fff', project: { z: true } }
+        },
+        lighting: { ambient: 0.6, diffuse: 0.5, specular: 0.3, roughness: 0.5 },
+        opacity: 0.95
+    };
+
+    var layout = {
+        paper_bgcolor: '#111', plot_bgcolor: '#111',
+        scene: {
+            xaxis: { title: 'X (cm)', color: '#aaa', gridcolor: '#333' },
+            yaxis: { title: 'Y (cm)', color: '#aaa', gridcolor: '#333' },
+            zaxis: { title: 'Anomaly', color: '#aaa', gridcolor: '#333' },
+            bgcolor: '#111',
+            camera: lastCamera || { eye: { x: 1.5, y: 1.5, z: 1.2 } }
+        },
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+        font: { color: '#aaa' }
+    };
+
+    // Plotly.react daha hızlı - mevcut plot'u günceller, sıfırdan oluşturmaz
+    Plotly.react('plot', [trace], layout, plotConfig);
+    plotInitialized = true;
+}
+
+function renderIsoSurface(jsonData) {
+    document.getElementById('loading').style.display = 'none';
+    var data = JSON.parse(jsonData);
+    var x = data.x, y = data.y, z = data.z, c = data.c;
+    showInterp(data.interpMode);
+    saveCamera();
+
+    var trace = {
+        type: 'isosurface',
+        x: x, y: y, z: z, value: c,
+        isomin: data.isomin || 0,
+        isomax: data.isomax || 100,
+        surface: { show: true, count: 5 },
+        caps: { x: {show: false}, y: {show: false}, z: {show: false} },
+        colorscale: [
+            [0, 'rgb(0,0,128)'], [0.25, 'rgb(0,128,255)'],
+            [0.5, 'rgb(0,255,0)'], [0.75, 'rgb(255,255,0)'],
+            [1, 'rgb(255,0,0)']
+        ],
+        showscale: true,
+        colorbar: { title: 'Value', titlefont: {color:'#fff'}, tickfont: {color:'#aaa'} },
+        opacity: 0.6
+    };
+
+    var layout = {
+        paper_bgcolor: '#111', plot_bgcolor: '#111',
+        scene: {
+            xaxis: { title: 'X', color: '#aaa', gridcolor: '#333' },
+            yaxis: { title: 'Y', color: '#aaa', gridcolor: '#333' },
+            zaxis: { title: 'Depth', color: '#aaa', gridcolor: '#333' },
+            bgcolor: '#111',
+            camera: lastCamera || { eye: { x: 1.8, y: 1.8, z: 1.5 } }
+        },
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+        font: { color: '#aaa' }
+    };
+
+    Plotly.react('plot', [trace], layout, plotConfig);
+    plotInitialized = true;
+}
+
+function renderPointCloud(jsonData) {
+    document.getElementById('loading').style.display = 'none';
+    var data = JSON.parse(jsonData);
+    showInterp(data.interpMode);
+    saveCamera();
+
+    var trace = {
+        type: 'scatter3d',
+        mode: 'markers',
+        x: data.x, y: data.y, z: data.z,
+        marker: {
+            size: 3,
+            color: data.c,
+            colorscale: 'Jet',
+            showscale: true,
+            colorbar: { title: 'Value', titlefont: {color:'#fff'}, tickfont: {color:'#aaa'} }
+        }
+    };
+
+    var layout = {
+        paper_bgcolor: '#111', plot_bgcolor: '#111',
+        scene: {
+            xaxis: { title: 'X', color: '#aaa', gridcolor: '#333' },
+            yaxis: { title: 'Y', color: '#aaa', gridcolor: '#333' },
+            zaxis: { title: 'Z', color: '#aaa', gridcolor: '#333' },
+            bgcolor: '#111',
+            camera: lastCamera || { eye: { x: 1.5, y: 1.5, z: 1.2 } }
+        },
+        margin: { l: 0, r: 0, t: 0, b: 0 },
+        font: { color: '#aaa' }
+    };
+
+    Plotly.react('plot', [trace], layout, plotConfig);
+    plotInitialized = true;
+}
+</script>
+</body>
+</html>
