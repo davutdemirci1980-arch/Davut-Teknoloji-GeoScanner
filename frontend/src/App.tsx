@@ -6,6 +6,7 @@ import SensorPanel from "./components/SensorPanel";
 import AnalysisPanel from "./components/AnalysisPanel";
 import Legend from "./components/Legend";
 import SensorHeatmap from "./components/SensorHeatmap";
+import BackendSettings from "./components/BackendSettings";
 import type {
   AnalyzeResponse,
   Material,
@@ -152,12 +153,15 @@ export default function App() {
           <h1>Davut Teknoloji · GeoScanner</h1>
           <p>Tam voksel tabanlı, çoklu sensörlü, yapay zeka destekli yer altı görüntüleme simülasyon laboratuvarı</p>
         </div>
-        {scenario && (
-          <div className="scenario-badge">
-            {scenario.dimensions_m[0].toFixed(1)}×{scenario.dimensions_m[1].toFixed(1)}×{scenario.dimensions_m[2].toFixed(1)} m ·{" "}
-            {scenario.shape[0]}×{scenario.shape[1]}×{scenario.shape[2]} voksel
-          </div>
-        )}
+        <div className="header-right">
+          {scenario && (
+            <div className="scenario-badge">
+              {scenario.dimensions_m[0].toFixed(1)}×{scenario.dimensions_m[1].toFixed(1)}×{scenario.dimensions_m[2].toFixed(1)} m ·{" "}
+              {scenario.shape[0]}×{scenario.shape[1]}×{scenario.shape[2]} voksel
+            </div>
+          )}
+          <BackendSettings onSaved={() => window.location.reload()} />
+        </div>
       </header>
 
       {error && (

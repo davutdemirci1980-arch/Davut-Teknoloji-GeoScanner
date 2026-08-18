@@ -52,6 +52,32 @@ body {
   color: var(--text-dim);
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.backend-settings {
+  position: relative;
+}
+
+.backend-settings-popover {
+  position: absolute;
+  right: 0;
+  top: 36px;
+  width: 280px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 20;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
 .scenario-badge {
   font-size: 0.78rem;
   color: var(--accent);

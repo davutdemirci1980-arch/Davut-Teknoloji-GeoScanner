@@ -11,6 +11,15 @@ frontend/dist/
 frontend/.vite/
 frontend/tsconfig.tsbuildinfo
 
+# Android (Capacitor) build output
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/capacitor-cordova-android-plugins/build/
+frontend/android/local.properties
+frontend/android/*.iml
+frontend/android/.idea/
+
 # OS / editor
 .DS_Store
 *.log

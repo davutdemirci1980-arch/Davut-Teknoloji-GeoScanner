@@ -9,10 +9,26 @@ import type {
   VoxelGridResponse,
 } from "../types";
 
-const BASE = "/api";
+const STORAGE_KEY = "geoscanner_api_base";
+const DEFAULT_BASE = "/api";
+
+function normalizeBase(value: string): string {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  return trimmed === "" ? DEFAULT_BASE : trimmed;
+}
+
+export function getApiBase(): string {
+  if (typeof window === "undefined") return DEFAULT_BASE;
+  return normalizeBase(window.localStorage.getItem(STORAGE_KEY) ?? DEFAULT_BASE);
+}
+
+export function setApiBase(value: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STORAGE_KEY, normalizeBase(value));
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${getApiBase()}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });

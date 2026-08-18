@@ -73,6 +73,27 @@ Vite dev sunucusu `/api` isteklerini `http://localhost:8000`'e proxy'ler (bkz. `
 cd backend && source .venv/bin/activate && python3 -m pytest
 ```
 
+## Android (APK) Olarak Derleme
+
+`frontend/android` klasöründe Capacitor ile hazırlanmış tam bir Android Studio projesi bulunuyor. Bu, web arayüzünü bir Android uygulaması olarak paketler. **Uygulama hâlâ ayrı bir backend'e ihtiyaç duyar** — telefon, backend'in çalıştığı adrese ağ üzerinden erişebilmelidir (aynı Wi-Fi'deki bilgisayarınız, ya da internete açık bir sunucu).
+
+> Not: Bu proje bulut oturumunda gerçek bir `.apk` dosyası **üretilemedi** — Android SDK ve Gradle eklentisi Google'ın `dl.google.com` sunucusundan indiriliyor ve bu adres bu ortamda ağ politikası gereği engelli. Aşağıdaki adımlarla kendi bilgisayarınızda (normal internet erişimiyle) 5 dakikada APK üretebilirsiniz.
+
+### Adımlar
+
+1. **Android Studio'yu kurun**: https://developer.android.com/studio (SDK'yı otomatik kurar).
+2. Backend'i bilgisayarınızda çalıştırın (yukarıdaki "Backend" bölümü) ve bilgisayarınızın **yerel ağ IP adresini** öğrenin (örn. `ipconfig` / `ifconfig` ile, genelde `192.168.x.x`).
+3. Frontend'i derleyip Android projesine kopyalayın:
+   ```bash
+   cd frontend
+   npm install
+   npm run build
+   npx cap sync android
+   ```
+4. Android Studio'da `frontend/android` klasörünü açın, Gradle senkronizasyonunun bitmesini bekleyin.
+5. **Build > Build Bundle(s) / APK(s) > Build APK(s)** ile derleyin. Üretilen dosya `android/app/build/outputs/apk/debug/app-debug.apk` içinde olur; telefonunuza kopyalayıp kurabilirsiniz (bilinmeyen kaynaklardan yükleme izni gerekir).
+6. Uygulamayı telefonda açın, sağ üstteki **"Sunucu Ayarı"**na dokunup backend adresini girin: `http://<bilgisayarınızın-IP'si>:8000/api` (telefon ve bilgisayar aynı Wi-Fi ağında olmalı).
+
 ## Kullanım Akışı
 
 1. **Voksel Simülasyon Laboratuvarı** panelinden bir senaryo (karma / altyapı hatları / arkeoloji / sadece jeoloji) ve boyutlar seçip **"Yeni Senaryo Oluştur"** ile sentetik yeraltı sahnesini üretin.
