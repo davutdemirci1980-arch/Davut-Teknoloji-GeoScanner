@@ -64,15 +64,24 @@ export async function saveCsvFile(filename: string, csvContent: string): Promise
     try {
       const downloads = await window.claude.use<ClaudeDownloadsCapability>("downloads");
       if (downloads) {
-        await downloads.save({ filename, data: csvContent });
-        return { ok: true, message: "CSV indirildi." };
+        try {
+          await downloads.save({ filename, data: csvContent });
+          return { ok: true, message: "CSV indirildi." };
+        } catch (err) {
+          const code = (err as { code?: string })?.code;
+          if (code === "extension_not_enabled" || code === "rejected_extension") {
+            // .csv isn't allowed in this view (e.g. the mobile app); .txt is
+            // always in the base allowlist and has the exact same content.
+            const txtFilename = filename.replace(/\.csv$/i, ".txt");
+            await downloads.save({ filename: txtFilename, data: csvContent });
+            return { ok: true, message: `${txtFilename} olarak indirildi (bu görünümde .csv desteklenmiyor).` };
+          }
+          throw err;
+        }
       }
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code === "declined") return { ok: false, message: "İndirme iptal edildi." };
-      if (code === "extension_not_enabled" || code === "rejected_extension") {
-        return { ok: false, message: "Bu görünümde CSV indirme desteklenmiyor." };
-      }
       return { ok: false, message: "CSV indirilemedi, tekrar deneyin." };
     }
   }
