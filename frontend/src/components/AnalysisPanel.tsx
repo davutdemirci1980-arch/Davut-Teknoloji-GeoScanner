@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AnalyzeResponse } from "../types";
+import { anomaliesToCsv, saveCsvFile } from "../csvExport";
 
 interface Props {
   onAnalyze: (minSizeVoxels: number, thresholdPercentile: number) => void;
@@ -11,6 +12,21 @@ interface Props {
 export default function AnalysisPanel({ onAnalyze, busy, disabled, result }: Props) {
   const [threshold, setThreshold] = useState(96);
   const [minSize, setMinSize] = useState(3);
+  const [csvBusy, setCsvBusy] = useState(false);
+  const [csvStatus, setCsvStatus] = useState<string | null>(null);
+
+  async function handleDownloadCsv() {
+    if (!result) return;
+    setCsvBusy(true);
+    setCsvStatus(null);
+    try {
+      const csv = anomaliesToCsv(result);
+      const { message } = await saveCsvFile(`geoscanner-anomaliler-${result.session_id.slice(0, 8)}.csv`, csv);
+      setCsvStatus(message);
+    } finally {
+      setCsvBusy(false);
+    }
+  }
 
   return (
     <div className="panel">
@@ -35,6 +51,10 @@ export default function AnalysisPanel({ onAnalyze, busy, disabled, result }: Pro
           <p className="panel-hint">
             {result.anomalies.length} anomali tespit edildi · füzyon ort {result.fused_stats.mean.toFixed(3)}
           </p>
+          <button className="ghost-btn csv-btn" disabled={csvBusy || result.anomalies.length === 0} onClick={handleDownloadCsv}>
+            {csvBusy ? "Hazırlanıyor..." : "CSV İndir"}
+          </button>
+          {csvStatus && <p className="panel-hint csv-status">{csvStatus}</p>}
           <div className="anomaly-list">
             {result.anomalies.map((a) => (
               <div key={a.id} className="anomaly-card">
