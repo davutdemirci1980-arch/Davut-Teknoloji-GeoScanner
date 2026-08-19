@@ -12,6 +12,9 @@ on:
       - ".github/workflows/android-build.yml"
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,9 +37,26 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK
+      - name: Rename APK to a stable filename
+        run: cp app/build/outputs/apk/debug/*.apk yer-alti-tarayici-debug.apk
+
+      - name: Upload APK (build artifact)
         uses: actions/upload-artifact@v4
         with:
           name: geoscanner-debug-apk
           path: android-native/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Publish APK to a public release (no login required to download)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-debug-latest
+          name: "GeoScanner Android (debug) — en son otomatik derleme"
+          body: |
+            Bu, `android-native/` içindeki en son koddan otomatik olarak üretilen
+            imzasız (debug) bir Android APK'sıdır. Bu link her zaman en güncel
+            derlemeyi gösterir — aşağıdaki `.apk` dosyasına dokunup indirin,
+            giriş yapmanıza gerek yoktur.
+          files: android-native/yer-alti-tarayici-debug.apk
+          make_latest: "true"
