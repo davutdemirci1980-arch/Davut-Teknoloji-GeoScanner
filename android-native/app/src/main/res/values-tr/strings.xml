@@ -145,7 +145,7 @@
     <string name="simlab_analyze">🧠 AI Analizi</string>
     <string name="simlab_calibration_balance_dual">Çift Sensörü Dengele</string>
     <string name="simlab_calibration_reference_column">İlk Sütunu Referans Al</string>
-    <string name="simlab_clean_saved">Temiz karşılaştırma taraması da Kayıtlar'a eklendi</string>
+    <string name="simlab_clean_saved">Temiz karşılaştırma taraması da Kayıtlar\'a eklendi</string>
     <string name="simlab_generated">Simülasyon üretildi: %d nokta</string>
     <string name="simlab_interference_add">+ Parazit Kaynağı Ekle</string>
     <string name="simlab_interference_dialog_title">Parazit Kaynağı Ekle</string>
