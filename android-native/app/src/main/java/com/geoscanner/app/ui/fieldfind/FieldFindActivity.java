@@ -6,9 +6,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Typeface;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -218,15 +220,24 @@ public class FieldFindActivity extends AppCompatActivity {
 
     private void promptForApiKey() {
         int pad = (int) (20 * getResources().getDisplayMetrics().density);
+        int gap = (int) (12 * getResources().getDisplayMetrics().density);
 
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(pad, pad / 2, pad, 0);
+        container.setPadding(pad, pad, pad, pad);
+
+        TextView title = new TextView(this);
+        title.setText(getString(R.string.settings_ai_key_dialog_title));
+        title.setTextColor(0xFF00AAFF);
+        title.setTextSize(18);
+        title.setTypeface(title.getTypeface(), Typeface.BOLD);
+        title.setPadding(0, 0, 0, gap);
+        container.addView(title);
 
         TextView message = new TextView(this);
         message.setText(getString(R.string.field_find_no_api_key));
         message.setTextColor(0xFFCCCCCC);
-        message.setPadding(0, 0, 0, pad / 2);
+        message.setPadding(0, 0, 0, gap);
         container.addView(message);
 
         EditText input = new EditText(this);
@@ -235,18 +246,49 @@ public class FieldFindActivity extends AppCompatActivity {
         input.setHintTextColor(0xFF888888);
         container.addView(input);
 
-        new android.app.AlertDialog.Builder(this, R.style.Theme_GeoScanner_Dialog)
-                .setTitle(getString(R.string.settings_ai_key_dialog_title))
+        LinearLayout buttonRow = new LinearLayout(this);
+        buttonRow.setOrientation(LinearLayout.HORIZONTAL);
+        buttonRow.setPadding(0, gap * 2, 0, 0);
+
+        TextView btnCancel = new TextView(this);
+        btnCancel.setText(getString(R.string.cancel));
+        btnCancel.setTextColor(0xFFFFFFFF);
+        btnCancel.setGravity(Gravity.CENTER);
+        btnCancel.setBackgroundResource(R.drawable.btn_card);
+        btnCancel.setPadding(0, gap, 0, gap);
+        LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        cancelParams.setMarginEnd(gap / 2);
+        btnCancel.setLayoutParams(cancelParams);
+
+        TextView btnSave = new TextView(this);
+        btnSave.setText(getString(android.R.string.ok));
+        btnSave.setTextColor(0xFFFFFFFF);
+        btnSave.setGravity(Gravity.CENTER);
+        btnSave.setBackgroundResource(R.drawable.btn_primary);
+        btnSave.setPadding(0, gap, 0, gap);
+        LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        saveParams.setMarginStart(gap / 2);
+        btnSave.setLayoutParams(saveParams);
+
+        buttonRow.addView(btnCancel);
+        buttonRow.addView(btnSave);
+        container.addView(buttonRow);
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this, R.style.Theme_GeoScanner_Dialog)
                 .setView(container)
-                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                    String key = input.getText().toString().trim();
-                    if (!key.isEmpty()) {
-                        AiSettings.setApiKey(this, key);
-                        startAnalysis(key);
-                    }
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create();
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnSave.setOnClickListener(v -> {
+            String key = input.getText().toString().trim();
+            if (!key.isEmpty()) {
+                AiSettings.setApiKey(this, key);
+                dialog.dismiss();
+                startAnalysis(key);
+            }
+        });
+
+        dialog.show();
     }
 
     private void startAnalysis(String apiKey) {
