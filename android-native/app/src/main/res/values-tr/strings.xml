@@ -139,6 +139,9 @@
     <string name="setup_step">Adım: %d cm</string>
     <string name="setup_title">Yeni Tarama Kurulumu</string>
     <string name="setup_width">Genişlik: %d</string>
+    <string name="simreport_error">PDF rapor oluşturulamadı</string>
+    <string name="simreport_generate">📄 PDF Rapor Oluştur</string>
+    <string name="simreport_saved">PDF rapor kaydedildi</string>
     <string name="simcompare_common">Ortak — her iki taramada da görüldü (%d)</string>
     <string name="simcompare_none">Yok</string>
     <string name="simcompare_only_a">Sadece A taramasında (%d)</string>
@@ -165,11 +168,13 @@
     <string name="simlab_interference_add">+ Parazit Kaynağı Ekle</string>
     <string name="simlab_interference_dialog_title">Parazit Kaynağı Ekle</string>
     <string name="simlab_interference_empty">Henüz parazit kaynağı eklenmedi.</string>
+    <string name="simlab_note_hint">örn. hava durumu, arazi koşulları, hatırlanması gereken herhangi bir şey…</string>
     <string name="simlab_operator_error_enable">Operatör Hatası Ekle</string>
     <string name="simlab_operator_error_hint">Etkinleştirilirse, bozulmuş taramayla birlikte temiz bir karşılaştırma taraması da kaydedilir.</string>
     <string name="simlab_operator_error_severity">Hata Şiddeti</string>
     <string name="simlab_section_calibration">Kalibrasyon ve Referans</string>
     <string name="simlab_section_interference">Parazit Laboratuvarı</string>
+    <string name="simlab_section_note">Operatör Notu</string>
     <string name="simlab_section_operator_error">Operatör Hatası Simülasyonu</string>
     <string name="simlab_grid_cols">Sütun</string>
     <string name="simlab_grid_pattern">Tarama Deseni</string>

@@ -1,7 +1,11 @@
 package com.geoscanner.app.simulation;
 
+import java.io.Serializable;
+
 /** Sensor rig settings: mode, geometry, and instrument imperfections. */
-public class SimSensorConfig {
+public class SimSensorConfig implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     public SensorMode mode = SensorMode.SINGLE;
     public double heightAboveGroundM = 0.1;
     /** Vertical spacing between sensor 1 and sensor 2 in DUAL_GRADIOMETER mode. */

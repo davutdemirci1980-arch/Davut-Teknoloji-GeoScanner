@@ -1,22 +1,26 @@
 package com.geoscanner.app.ui.simlab;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 
 import com.geoscanner.app.R;
 import com.geoscanner.app.simulation.SimAnalysisEngine;
 import com.geoscanner.app.simulation.SimAnomalyCluster;
 import com.geoscanner.app.simulation.SimDataPoint;
-import com.geoscanner.app.simulation.SimGridConfig;
-import com.geoscanner.app.simulation.SimInterferenceSource;
+import com.geoscanner.app.simulation.SimRunConfig;
+import com.geoscanner.app.simulation.SimReportGenerator;
 import com.geoscanner.app.utils.LocaleHelper;
 
-import java.io.Serializable;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -31,13 +35,11 @@ import java.util.Locale;
  */
 public class SimAnalysisActivity extends AppCompatActivity {
     public static final String EXTRA_POINTS = "sim_points";
-    public static final String EXTRA_INTERFERENCES = "sim_interferences";
-    public static final String EXTRA_COLS = "sim_cols";
-    public static final String EXTRA_ROWS = "sim_rows";
-    public static final String EXTRA_STEP_CM = "sim_step_cm";
-    public static final String EXTRA_SENSOR_HEIGHT_M = "sim_sensor_height_m";
+    public static final String EXTRA_CONFIG = "sim_config";
 
     private LinearLayout resultsContainer;
+    private SimRunConfig config;
+    private List<SimAnomalyCluster> clusters;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -53,20 +55,16 @@ public class SimAnalysisActivity extends AppCompatActivity {
         getWindow().setNavigationBarColor(0xFF111111);
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+        findViewById(R.id.btnPdfReport).setOnClickListener(v -> generateReport());
         resultsContainer = findViewById(R.id.resultsContainer);
         TextView tvSummary = findViewById(R.id.tvSummary);
 
         List<SimDataPoint> points = (List<SimDataPoint>) getIntent().getSerializableExtra(EXTRA_POINTS);
-        List<SimInterferenceSource> interferences = (List<SimInterferenceSource>) getIntent().getSerializableExtra(EXTRA_INTERFERENCES);
-        SimGridConfig grid = new SimGridConfig();
-        grid.cols = getIntent().getIntExtra(EXTRA_COLS, 11);
-        grid.rows = getIntent().getIntExtra(EXTRA_ROWS, 11);
-        grid.stepCm = getIntent().getDoubleExtra(EXTRA_STEP_CM, 30);
-        double sensorHeightM = getIntent().getDoubleExtra(EXTRA_SENSOR_HEIGHT_M, 0.1);
-
+        config = (SimRunConfig) getIntent().getSerializableExtra(EXTRA_CONFIG);
         if (points == null) points = new ArrayList<>();
+        if (config == null) config = new SimRunConfig();
 
-        List<SimAnomalyCluster> clusters = SimAnalysisEngine.analyze(points, grid, sensorHeightM, interferences);
+        clusters = SimAnalysisEngine.analyze(points, config.grid, config.sensor.heightAboveGroundM, config.interferences);
         tvSummary.setText(String.format(Locale.US, getString(R.string.simanalysis_summary), clusters.size()));
 
         if (clusters.isEmpty()) {
@@ -79,6 +77,25 @@ public class SimAnalysisActivity extends AppCompatActivity {
 
         for (int i = 0; i < clusters.size(); i++) {
             resultsContainer.addView(buildClusterCard(i + 1, clusters.get(i)));
+        }
+    }
+
+    private void generateReport() {
+        File pdf = SimReportGenerator.generate(this, config, clusters);
+        if (pdf == null) {
+            Toast.makeText(this, getString(R.string.simreport_error), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Toast.makeText(this, getString(R.string.simreport_saved), Toast.LENGTH_SHORT).show();
+        try {
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", pdf);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(uri, "application/pdf");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            if (intent.resolveActivity(getPackageManager()) != null) {
+                startActivity(intent);
+            }
+        } catch (Exception ignored) {
         }
     }
 

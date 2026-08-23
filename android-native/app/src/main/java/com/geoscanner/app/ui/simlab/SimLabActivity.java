@@ -73,6 +73,7 @@ public class SimLabActivity extends AppCompatActivity {
     private SeekBar sbOperatorErrorSeverity;
     private CheckBox cbReferenceFirstColumn;
     private CheckBox cbBalanceDualSensors;
+    private EditText etOperatorNote;
 
     private final List<SimTarget> targets = new ArrayList<>();
     private final List<SimInterferenceSource> interferences = new ArrayList<>();
@@ -103,6 +104,17 @@ public class SimLabActivity extends AppCompatActivity {
         buildGridSection();
         buildPresetSection();
         buildTargetSection();
+        buildNoteSection();
+    }
+
+    private void buildNoteSection() {
+        LinearLayout c = card(getString(R.string.simlab_section_note));
+        etOperatorNote = new EditText(this);
+        etOperatorNote.setHint(getString(R.string.simlab_note_hint));
+        etOperatorNote.setTextColor(0xFFFFFFFF);
+        etOperatorNote.setHintTextColor(0xFF666666);
+        etOperatorNote.setMinLines(2);
+        c.addView(etOperatorNote);
     }
 
     // ---------------------------------------------------------------- UI build helpers
@@ -659,6 +671,7 @@ public class SimLabActivity extends AppCompatActivity {
         config.grid = currentGridConfig();
         config.operatorError = currentOperatorErrorConfig();
         config.calibration = currentCalibrationConfig();
+        config.operatorNote = etOperatorNote.getText().toString();
         return config;
     }
 
@@ -713,11 +726,7 @@ public class SimLabActivity extends AppCompatActivity {
 
         Intent intent = new Intent(this, SimAnalysisActivity.class);
         intent.putExtra(SimAnalysisActivity.EXTRA_POINTS, new ArrayList<>(raw));
-        intent.putExtra(SimAnalysisActivity.EXTRA_INTERFERENCES, new ArrayList<>(interferences));
-        intent.putExtra(SimAnalysisActivity.EXTRA_COLS, config.grid.cols);
-        intent.putExtra(SimAnalysisActivity.EXTRA_ROWS, config.grid.rows);
-        intent.putExtra(SimAnalysisActivity.EXTRA_STEP_CM, config.grid.stepCm);
-        intent.putExtra(SimAnalysisActivity.EXTRA_SENSOR_HEIGHT_M, config.sensor.heightAboveGroundM);
+        intent.putExtra(SimAnalysisActivity.EXTRA_CONFIG, config);
         startActivity(intent);
     }
 
@@ -733,11 +742,7 @@ public class SimLabActivity extends AppCompatActivity {
         Intent intent = new Intent(this, SimComparisonActivity.class);
         intent.putExtra(SimComparisonActivity.EXTRA_POINTS_A, new ArrayList<>(rawA));
         intent.putExtra(SimComparisonActivity.EXTRA_POINTS_B, new ArrayList<>(rawB));
-        intent.putExtra(SimComparisonActivity.EXTRA_INTERFERENCES, new ArrayList<>(interferences));
-        intent.putExtra(SimComparisonActivity.EXTRA_COLS, config.grid.cols);
-        intent.putExtra(SimComparisonActivity.EXTRA_ROWS, config.grid.rows);
-        intent.putExtra(SimComparisonActivity.EXTRA_STEP_CM, config.grid.stepCm);
-        intent.putExtra(SimComparisonActivity.EXTRA_SENSOR_HEIGHT_M, config.sensor.heightAboveGroundM);
+        intent.putExtra(SimComparisonActivity.EXTRA_CONFIG, config);
         startActivity(intent);
     }
 }

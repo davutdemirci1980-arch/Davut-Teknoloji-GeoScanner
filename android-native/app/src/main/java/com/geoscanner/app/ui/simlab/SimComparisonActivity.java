@@ -14,8 +14,7 @@ import com.geoscanner.app.simulation.SimAnomalyCluster;
 import com.geoscanner.app.simulation.SimComparisonEngine;
 import com.geoscanner.app.simulation.SimComparisonResult;
 import com.geoscanner.app.simulation.SimDataPoint;
-import com.geoscanner.app.simulation.SimGridConfig;
-import com.geoscanner.app.simulation.SimInterferenceSource;
+import com.geoscanner.app.simulation.SimRunConfig;
 import com.geoscanner.app.utils.LocaleHelper;
 
 import java.util.ArrayList;
@@ -32,11 +31,7 @@ import java.util.Locale;
 public class SimComparisonActivity extends AppCompatActivity {
     public static final String EXTRA_POINTS_A = "sim_points_a";
     public static final String EXTRA_POINTS_B = "sim_points_b";
-    public static final String EXTRA_INTERFERENCES = "sim_interferences";
-    public static final String EXTRA_COLS = "sim_cols";
-    public static final String EXTRA_ROWS = "sim_rows";
-    public static final String EXTRA_STEP_CM = "sim_step_cm";
-    public static final String EXTRA_SENSOR_HEIGHT_M = "sim_sensor_height_m";
+    public static final String EXTRA_CONFIG = "sim_config";
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -54,19 +49,14 @@ public class SimComparisonActivity extends AppCompatActivity {
 
         List<SimDataPoint> rawA = (List<SimDataPoint>) getIntent().getSerializableExtra(EXTRA_POINTS_A);
         List<SimDataPoint> rawB = (List<SimDataPoint>) getIntent().getSerializableExtra(EXTRA_POINTS_B);
-        List<SimInterferenceSource> interferences = (List<SimInterferenceSource>) getIntent().getSerializableExtra(EXTRA_INTERFERENCES);
+        SimRunConfig config = (SimRunConfig) getIntent().getSerializableExtra(EXTRA_CONFIG);
         if (rawA == null) rawA = new ArrayList<>();
         if (rawB == null) rawB = new ArrayList<>();
+        if (config == null) config = new SimRunConfig();
 
-        SimGridConfig grid = new SimGridConfig();
-        grid.cols = getIntent().getIntExtra(EXTRA_COLS, 11);
-        grid.rows = getIntent().getIntExtra(EXTRA_ROWS, 11);
-        grid.stepCm = getIntent().getDoubleExtra(EXTRA_STEP_CM, 30);
-        double sensorHeightM = getIntent().getDoubleExtra(EXTRA_SENSOR_HEIGHT_M, 0.1);
-
-        List<SimAnomalyCluster> clustersA = SimAnalysisEngine.analyze(rawA, grid, sensorHeightM, interferences);
-        List<SimAnomalyCluster> clustersB = SimAnalysisEngine.analyze(rawB, grid, sensorHeightM, interferences);
-        SimComparisonResult result = SimComparisonEngine.compare(rawA, rawB, clustersA, clustersB, grid.stepM());
+        List<SimAnomalyCluster> clustersA = SimAnalysisEngine.analyze(rawA, config.grid, config.sensor.heightAboveGroundM, config.interferences);
+        List<SimAnomalyCluster> clustersB = SimAnalysisEngine.analyze(rawB, config.grid, config.sensor.heightAboveGroundM, config.interferences);
+        SimComparisonResult result = SimComparisonEngine.compare(rawA, rawB, clustersA, clustersB, config.grid.stepM());
 
         TextView tvScoreValue = findViewById(R.id.tvScoreValue);
         String qualityLabel = result.repeatabilityScore >= 0.8 ? getString(R.string.simcompare_quality_high)

@@ -1,7 +1,11 @@
 package com.geoscanner.app.simulation;
 
+import java.io.Serializable;
+
 /** A single virtual buried target placed in the simulation scene. */
-public class SimTarget {
+public class SimTarget implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     public TargetType type;
     public double xM;
     public double yM;
