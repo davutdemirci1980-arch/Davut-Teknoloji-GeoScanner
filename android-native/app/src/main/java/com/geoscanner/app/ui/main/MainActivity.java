@@ -30,6 +30,7 @@ import com.geoscanner.app.ui.records.RecordsActivity;
 import com.geoscanner.app.ui.scan.ScanPreviewActivity;
 import com.geoscanner.app.ui.scan.ScanSetupActivity;
 import com.geoscanner.app.ui.settings.SettingsActivity;
+import com.geoscanner.app.ui.simlab.SimLabActivity;
 import com.geoscanner.app.ui.voxler4d.Pro4DVoxlerActivity;
 import com.geoscanner.app.utils.LocaleHelper;
 
@@ -78,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnLive3D).setOnClickListener(v -> startActivity(new Intent(this, Live3DActivity.class)));
         findViewById(R.id.btnRecords).setOnClickListener(v -> startActivity(new Intent(this, RecordsActivity.class)));
         findViewById(R.id.btnFieldFind).setOnClickListener(v -> startActivity(new Intent(this, FieldFindActivity.class)));
+        findViewById(R.id.btnSimLab).setOnClickListener(v -> startActivity(new Intent(this, SimLabActivity.class)));
         findViewById(R.id.btn4DVoxler).setOnClickListener(v -> startActivity(new Intent(this, Pro4DVoxlerActivity.class)));
         findViewById(R.id.btnImport).setOnClickListener(v -> importFile());
         findViewById(R.id.btnSettings).setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
