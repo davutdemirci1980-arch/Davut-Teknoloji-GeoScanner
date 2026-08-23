@@ -14,8 +14,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.geoscanner.app.R;
 import com.geoscanner.app.data.FileManager;
 import com.geoscanner.app.data.ScanDataPoint;
+import com.geoscanner.app.simulation.SimDataPoint;
+import com.geoscanner.app.simulation.SimGridConfig;
+import com.geoscanner.app.simulation.SimRunConfig;
 import com.geoscanner.app.ui.isosurface.IsoSurfaceActivity;
 import com.geoscanner.app.ui.scan.ScanPreviewActivity;
+import com.geoscanner.app.ui.simlab.SimAnalysisActivity;
 import com.geoscanner.app.utils.LocaleHelper;
 
 import java.io.File;
@@ -82,6 +86,7 @@ public class RecordsActivity extends AppCompatActivity {
         String[] options = {
                 getString(R.string.records_view_heatmap),
                 getString(R.string.records_3d_view),
+                getString(R.string.records_compare_simulation),
                 getString(R.string.records_export_vtk),
                 getString(R.string.records_export_grd),
                 getString(R.string.records_export_csv),
@@ -104,24 +109,64 @@ public class RecordsActivity extends AppCompatActivity {
                     break;
                 }
                 case 2:
-                    exportAndNotify(file, name, "vtk");
+                    compareWithSimulation(file);
                     break;
                 case 3:
-                    exportAndNotify(file, name, "grd");
+                    exportAndNotify(file, name, "vtk");
                     break;
                 case 4:
-                    exportAndNotify(file, name, "csv");
+                    exportAndNotify(file, name, "grd");
                     break;
                 case 5:
-                    showFileInfo(file);
+                    exportAndNotify(file, name, "csv");
                     break;
                 case 6:
+                    showFileInfo(file);
+                    break;
+                case 7:
                     showDeleteDialog(file);
                     break;
                 default:
                     break;
             }
         }).show();
+    }
+
+    private void compareWithSimulation(File file) {
+        List<ScanDataPoint> points = FileManager.readAuto(file);
+        if (points == null || points.isEmpty()) {
+            Toast.makeText(this, getString(R.string.records_cannot_read), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int maxX = 0, maxY = 0;
+        for (ScanDataPoint p : points) {
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+        }
+
+        List<SimDataPoint> simPoints = new ArrayList<>(points.size());
+        for (ScanDataPoint p : points) {
+            SimDataPoint sp = new SimDataPoint();
+            sp.gridX = p.x;
+            sp.gridY = p.y;
+            sp.displayValue = p.c;
+            simPoints.add(sp);
+        }
+
+        SimRunConfig config = new SimRunConfig();
+        SimGridConfig grid = new SimGridConfig();
+        grid.cols = maxX + 1;
+        grid.rows = maxY + 1;
+        grid.stepCm = 30;
+        config.grid = grid;
+        config.operatorNote = getString(R.string.records_compare_note, file.getName());
+
+        Intent intent = new Intent(this, SimAnalysisActivity.class);
+        intent.putExtra(SimAnalysisActivity.EXTRA_POINTS, new ArrayList<>(simPoints));
+        intent.putExtra(SimAnalysisActivity.EXTRA_CONFIG, config);
+        intent.putExtra(SimAnalysisActivity.EXTRA_REAL_DATA, true);
+        startActivity(intent);
     }
 
     private void exportAndNotify(File file, String name, String format) {

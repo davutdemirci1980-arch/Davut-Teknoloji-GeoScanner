@@ -267,6 +267,65 @@ public class SimAnalysisEngine {
         }
     }
 
+    /**
+     * Section 25: a lightweight, honest "which library scenario does this
+     * profile resemble" heuristic for real-device data — reuses the same
+     * per-cluster classification this engine already produces rather than
+     * re-deriving a separate signal comparison. Explicitly a rough profile
+     * match, not a diagnosis (per the spec's own caveat).
+     */
+    public static String suggestSimilarScenario(List<SimAnomalyCluster> clusters) {
+        if (clusters.isEmpty()) {
+            return "Belirgin bir anomali bulunamadı — temiz zemin / 'Sadece Jeoloji' senaryosuna yakın.";
+        }
+
+        boolean hasPositive = false, hasNegative = false;
+        double maxHalfWidthDepth = 0;
+        TargetType best = null;
+        double bestConfidence = -1;
+        for (SimAnomalyCluster c : clusters) {
+            if (c.peakAmplitude > 0) hasPositive = true;
+            else hasNegative = true;
+            maxHalfWidthDepth = Math.max(maxHalfWidthDepth, c.depthEstimateHalfWidthM);
+            if (c.candidateType != null && c.confidence > bestConfidence) {
+                bestConfidence = c.confidence;
+                best = c.candidateType;
+            }
+        }
+
+        String base;
+        if (hasPositive && hasNegative) {
+            base = "Metal + Boşluk";
+        } else if (best == null) {
+            base = "belirsiz bir profil";
+        } else {
+            switch (best) {
+                case METAL:
+                    base = clusters.size() > 1 ? "İki Metal" : "Tek Metal";
+                    break;
+                case VOID:
+                    base = "Boşluk";
+                    break;
+                case ROOM:
+                    base = "Oda";
+                    break;
+                case TUNNEL:
+                    base = "Tünel";
+                    break;
+                case MINERALIZED_ZONE:
+                    base = "Mineralizasyon";
+                    break;
+                default:
+                    base = best.displayNameTr;
+                    break;
+            }
+        }
+
+        String depthNote = maxHalfWidthDepth > 2.5 ? " (Derin Büyük Hedef profiline yakın)"
+                : maxHalfWidthDepth > 0 && maxHalfWidthDepth < 0.5 ? " (Sığ Küçük Hedef profiline yakın)" : "";
+        return base + " senaryosuna benziyor" + depthNote + " — bu kesin bir teşhis değil, analiz desteğidir.";
+    }
+
     private static double cosineSimilarity(double[] a, double[] b) {
         double dot = 0, na = 0, nb = 0;
         for (int i = 0; i < a.length; i++) {

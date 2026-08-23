@@ -97,6 +97,8 @@
     <string name="records_3d_view">3D IsoSurface Görünüm</string>
     <string name="records_cancel">İptal</string>
     <string name="records_cannot_read">Dosya okunamadı</string>
+    <string name="records_compare_note">Gerçek cihaz dosyası: %s. Grid adımı ve sensör yüksekliği varsayılan değerler olarak alındı (bu dosya biçiminde saklanmıyor).</string>
+    <string name="records_compare_simulation">🧠 Simülasyonla Karşılaştır</string>
     <string name="records_delete">Sil</string>
     <string name="records_delete_msg">%s silinsin mi?</string>
     <string name="records_delete_title">Dosya Silinsin mi?</string>
@@ -168,6 +170,8 @@
     <string name="simanalysis_mark_target_a">Hedef A</string>
     <string name="simanalysis_mark_target_b">Hedef B</string>
     <string name="simanalysis_none">Gürültü eşiğinin üzerinde anomali kümesi bulunamadı.</string>
+    <string name="simanalysis_real_banner">Gerçek cihaz verisi — derinlik tahminleri yalnızca yaklaşık değerlerdir; "gerçek derinlik" karşılaştırma satırı burada geçerli değildir.</string>
+    <string name="simanalysis_similar_title">En Çok Benzeyen Kütüphane Senaryosu</string>
     <string name="simanalysis_summary">%d anomali kümesi tespit edildi</string>
     <string name="simanalysis_title">Yapay Zeka Analiz Sonuçları</string>
     <string name="simlab_analyze">🧠 AI Analizi</string>

@@ -97,6 +97,8 @@
     <string name="records_3d_view">3D IsoSurface View</string>
     <string name="records_cancel">Cancel</string>
     <string name="records_cannot_read">Cannot read file</string>
+    <string name="records_compare_note">Real device file: %s. Grid step and sensor height are assumed defaults (not stored in this file format).</string>
+    <string name="records_compare_simulation">🧠 Compare with Simulation</string>
     <string name="records_delete">Delete</string>
     <string name="records_delete_msg">Delete %s?</string>
     <string name="records_delete_title">Delete File?</string>
@@ -168,6 +170,8 @@
     <string name="simanalysis_mark_target_a">Target A</string>
     <string name="simanalysis_mark_target_b">Target B</string>
     <string name="simanalysis_none">No anomaly clusters detected above the noise threshold.</string>
+    <string name="simanalysis_real_banner">Real device data — depth estimates are approximations only; the "true depth" comparison line does not apply here.</string>
+    <string name="simanalysis_similar_title">Most Similar Library Scenario</string>
     <string name="simanalysis_summary">%d anomaly cluster(s) detected</string>
     <string name="simanalysis_title">AI Analysis Results</string>
     <string name="simlab_calibration_balance_dual">Balance Dual Sensors</string>

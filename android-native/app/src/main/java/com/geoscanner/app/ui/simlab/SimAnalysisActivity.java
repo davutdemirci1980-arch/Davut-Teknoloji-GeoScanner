@@ -40,10 +40,12 @@ import java.util.Locale;
 public class SimAnalysisActivity extends AppCompatActivity {
     public static final String EXTRA_POINTS = "sim_points";
     public static final String EXTRA_CONFIG = "sim_config";
+    public static final String EXTRA_REAL_DATA = "sim_real_data";
 
     private LinearLayout resultsContainer;
     private SimRunConfig config;
     private List<SimAnomalyCluster> clusters;
+    private boolean realData;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -65,11 +67,43 @@ public class SimAnalysisActivity extends AppCompatActivity {
 
         List<SimDataPoint> points = (List<SimDataPoint>) getIntent().getSerializableExtra(EXTRA_POINTS);
         config = (SimRunConfig) getIntent().getSerializableExtra(EXTRA_CONFIG);
+        realData = getIntent().getBooleanExtra(EXTRA_REAL_DATA, false);
         if (points == null) points = new ArrayList<>();
         if (config == null) config = new SimRunConfig();
 
         clusters = SimAnalysisEngine.analyze(points, config.grid, config.sensor.heightAboveGroundM, config.interferences);
         tvSummary.setText(String.format(Locale.US, getString(R.string.simanalysis_summary), clusters.size()));
+
+        if (realData) {
+            TextView realBanner = new TextView(this);
+            realBanner.setText(getString(R.string.simanalysis_real_banner));
+            realBanner.setTextColor(0xFFFF8800);
+            realBanner.setTextSize(12);
+            realBanner.setPadding(0, 0, 0, dp(8));
+            resultsContainer.addView(realBanner);
+
+            LinearLayout similarCard = new LinearLayout(this);
+            similarCard.setOrientation(LinearLayout.VERTICAL);
+            similarCard.setBackgroundResource(R.drawable.btn_card);
+            int pad = dp(16);
+            similarCard.setPadding(pad, pad, pad, pad);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.bottomMargin = dp(12);
+            similarCard.setLayoutParams(lp);
+            TextView similarTitle = new TextView(this);
+            similarTitle.setText(getString(R.string.simanalysis_similar_title));
+            similarTitle.setTextColor(0xFF00AAFF);
+            similarTitle.setTextSize(14);
+            similarTitle.setTypeface(similarTitle.getTypeface(), Typeface.BOLD);
+            similarCard.addView(similarTitle);
+            TextView similarBody = new TextView(this);
+            similarBody.setText(SimAnalysisEngine.suggestSimilarScenario(clusters));
+            similarBody.setTextColor(0xFFFFFFFF);
+            similarBody.setTextSize(13);
+            similarBody.setPadding(0, dp(6), 0, 0);
+            similarCard.addView(similarBody);
+            resultsContainer.addView(similarCard);
+        }
 
         if (clusters.isEmpty()) {
             TextView empty = new TextView(this);
@@ -146,12 +180,14 @@ public class SimAnalysisActivity extends AppCompatActivity {
         addLine(card, String.format(Locale.US, "Derinlik — genlik ters çözüm yöntemi: %.2f m", cluster.depthEstimateInversionM));
         addLine(card, String.format(Locale.US, "Yöntemler arası belirsizlik: ±%.2f m", cluster.depthUncertaintyM));
 
-        TextView trueDepth = new TextView(this);
-        trueDepth.setText(String.format(Locale.US, "Gerçek (simülasyon) derinlik: %.2f m — yalnızca eğitim/karşılaştırma amaçlı", cluster.trueDepthM));
-        trueDepth.setTextColor(0xFFFFD700);
-        trueDepth.setTextSize(12);
-        trueDepth.setPadding(0, dp(4), 0, 0);
-        card.addView(trueDepth);
+        if (!realData) {
+            TextView trueDepth = new TextView(this);
+            trueDepth.setText(String.format(Locale.US, "Gerçek (simülasyon) derinlik: %.2f m — yalnızca eğitim/karşılaştırma amaçlı", cluster.trueDepthM));
+            trueDepth.setTextColor(0xFFFFD700);
+            trueDepth.setTextSize(12);
+            trueDepth.setPadding(0, dp(4), 0, 0);
+            card.addView(trueDepth);
+        }
 
         TextView why = new TextView(this);
         why.setText(cluster.explanation);
