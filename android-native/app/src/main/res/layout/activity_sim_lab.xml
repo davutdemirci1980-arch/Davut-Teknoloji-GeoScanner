@@ -72,4 +72,15 @@
             android:layout_marginStart="6dp"
             android:text="@string/simlab_analyze"/>
     </LinearLayout>
+    <TextView
+        android:id="@+id/btnCompare"
+        android:background="@drawable/btn_card"
+        android:gravity="center"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#00ff88"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:text="@string/simlab_compare"/>
 </LinearLayout>

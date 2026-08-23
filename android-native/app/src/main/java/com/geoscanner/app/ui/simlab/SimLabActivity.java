@@ -66,6 +66,8 @@ public class SimLabActivity extends AppCompatActivity {
     private EditText etStep;
     private Spinner spPattern;
     private Spinner spPreset;
+    private CheckBox cbExamMode;
+    private boolean examAnswerRevealed = false;
     private LinearLayout interferenceListContainer;
     private CheckBox cbOperatorError;
     private SeekBar sbOperatorErrorSeverity;
@@ -91,6 +93,7 @@ public class SimLabActivity extends AppCompatActivity {
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
         findViewById(R.id.btnStartSim).setOnClickListener(v -> startSimulation());
         findViewById(R.id.btnAnalyze).setOnClickListener(v -> runAnalysis());
+        findViewById(R.id.btnCompare).setOnClickListener(v -> runComparison());
 
         buildGroundSection();
         buildInterferenceSection();
@@ -381,6 +384,14 @@ public class SimLabActivity extends AppCompatActivity {
         LinearLayout c = card(getString(R.string.simlab_section_preset));
         spPreset = spinner(c, getString(R.string.simlab_preset_pick), SimScenarioPresets.Preset.displayNames());
 
+        cbExamMode = new CheckBox(this);
+        cbExamMode.setText(getString(R.string.simlab_exam_mode));
+        cbExamMode.setTextColor(0xFFFFD700);
+        LinearLayout.LayoutParams cbLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        cbLp.topMargin = dp(8);
+        cbExamMode.setLayoutParams(cbLp);
+        c.addView(cbExamMode);
+
         TextView btnLoad = new TextView(this);
         btnLoad.setText(getString(R.string.simlab_preset_load));
         btnLoad.setTextColor(0xFFFFFFFF);
@@ -409,7 +420,13 @@ public class SimLabActivity extends AppCompatActivity {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.topMargin = dp(10);
         btnAdd.setLayoutParams(lp);
-        btnAdd.setOnClickListener(v -> showAddTargetDialog());
+        btnAdd.setOnClickListener(v -> {
+            if (cbExamMode.isChecked() && !targets.isEmpty() && !examAnswerRevealed) {
+                Toast.makeText(this, getString(R.string.simlab_exam_locked_add), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            showAddTargetDialog();
+        });
         c.addView(btnAdd);
 
         renderTargetList();
@@ -423,6 +440,27 @@ public class SimLabActivity extends AppCompatActivity {
             empty.setTextColor(0xFF888888);
             empty.setTextSize(13);
             targetListContainer.addView(empty);
+            return;
+        }
+        if (cbExamMode.isChecked() && !examAnswerRevealed) {
+            TextView locked = new TextView(this);
+            locked.setText(getString(R.string.simlab_exam_locked, targets.size()));
+            locked.setTextColor(0xFFFFD700);
+            locked.setTextSize(13);
+            locked.setPadding(0, dp(4), 0, dp(8));
+            targetListContainer.addView(locked);
+
+            TextView btnReveal = new TextView(this);
+            btnReveal.setText(getString(R.string.simlab_exam_reveal));
+            btnReveal.setTextColor(0xFFFFFFFF);
+            btnReveal.setGravity(Gravity.CENTER);
+            btnReveal.setBackgroundResource(R.drawable.btn_card);
+            btnReveal.setPadding(0, dp(10), 0, dp(10));
+            btnReveal.setOnClickListener(v -> {
+                examAnswerRevealed = true;
+                renderTargetList();
+            });
+            targetListContainer.addView(btnReveal);
             return;
         }
         for (int i = 0; i < targets.size(); i++) {
@@ -542,14 +580,25 @@ public class SimLabActivity extends AppCompatActivity {
     }
 
     private void loadPreset() {
-        SimScenarioPresets.Preset preset = SimScenarioPresets.Preset.values()[spPreset.getSelectedItemPosition()];
+        boolean examMode = cbExamMode.isChecked();
+        SimScenarioPresets.Preset[] all = SimScenarioPresets.Preset.values();
+        SimScenarioPresets.Preset preset = examMode
+                ? all[new java.util.Random().nextInt(all.length)]
+                : all[spPreset.getSelectedItemPosition()];
+
         SimGridConfig grid = currentGridConfig();
         targets.clear();
         targets.addAll(SimScenarioPresets.buildTargets(preset, grid));
         spGround.setSelection(SimScenarioPresets.groundTypeFor(preset).ordinal());
         sbInterference.setProgress((int) (SimScenarioPresets.interferenceFor(preset) * 100));
+        examAnswerRevealed = false;
         renderTargetList();
-        Toast.makeText(this, getString(R.string.simlab_preset_loaded, preset.displayNameTr), Toast.LENGTH_SHORT).show();
+
+        if (examMode) {
+            Toast.makeText(this, getString(R.string.simlab_exam_started), Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, getString(R.string.simlab_preset_loaded, preset.displayNameTr), Toast.LENGTH_SHORT).show();
+        }
     }
 
     // ---------------------------------------------------------------- config readers
@@ -669,6 +718,26 @@ public class SimLabActivity extends AppCompatActivity {
         intent.putExtra(SimAnalysisActivity.EXTRA_ROWS, config.grid.rows);
         intent.putExtra(SimAnalysisActivity.EXTRA_STEP_CM, config.grid.stepCm);
         intent.putExtra(SimAnalysisActivity.EXTRA_SENSOR_HEIGHT_M, config.sensor.heightAboveGroundM);
+        startActivity(intent);
+    }
+
+    private void runComparison() {
+        if (targets.isEmpty()) {
+            Toast.makeText(this, getString(R.string.simlab_target_empty), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        SimRunConfig config = currentRunConfig();
+        List<SimDataPoint> rawA = SimulationEngine.generate(config, System.currentTimeMillis(), config.operatorError.enabled);
+        List<SimDataPoint> rawB = SimulationEngine.generate(config, System.currentTimeMillis() + 1, config.operatorError.enabled);
+
+        Intent intent = new Intent(this, SimComparisonActivity.class);
+        intent.putExtra(SimComparisonActivity.EXTRA_POINTS_A, new ArrayList<>(rawA));
+        intent.putExtra(SimComparisonActivity.EXTRA_POINTS_B, new ArrayList<>(rawB));
+        intent.putExtra(SimComparisonActivity.EXTRA_INTERFERENCES, new ArrayList<>(interferences));
+        intent.putExtra(SimComparisonActivity.EXTRA_COLS, config.grid.cols);
+        intent.putExtra(SimComparisonActivity.EXTRA_ROWS, config.grid.rows);
+        intent.putExtra(SimComparisonActivity.EXTRA_STEP_CM, config.grid.stepCm);
+        intent.putExtra(SimComparisonActivity.EXTRA_SENSOR_HEIGHT_M, config.sensor.heightAboveGroundM);
         startActivity(intent);
     }
 }
