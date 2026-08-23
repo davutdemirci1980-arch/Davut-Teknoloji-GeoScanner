@@ -2,13 +2,15 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:background="#111111"
+    android:padding="16dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+
     <LinearLayout
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="12dp"
-        android:paddingTop="32dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="12dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
         <ImageButton
@@ -18,60 +20,67 @@
             android:layout_height="36dp"
             android:src="@android:drawable/ic_menu_revert"/>
         <TextView
-            android:textSize="20sp"
+            android:textSize="22sp"
             android:textStyle="bold"
             android:textColor="#00aaff"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="@string/records_title"
+            android:text="@string/simlab_title"
             android:layout_weight="1"
             android:paddingStart="12dp"/>
     </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <LinearLayout
+            android:id="@+id/dynamicContainer"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="8dp"/>
+    </ScrollView>
+
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="12dp"
-        android:paddingBottom="8dp">
+        android:layout_marginTop="10dp">
         <TextView
-            android:id="@+id/btnExportZip"
-            android:background="@drawable/btn_card"
+            android:id="@+id/btnStartSim"
+            android:background="@drawable/btn_primary"
             android:gravity="center"
-            android:textSize="13sp"
+            android:textSize="15sp"
+            android:textStyle="bold"
             android:textColor="#ffffff"
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="44dp"
+            android:layout_height="52dp"
             android:layout_marginEnd="6dp"
-            android:text="@string/records_export_zip"/>
+            android:text="@string/simlab_start"/>
         <TextView
-            android:id="@+id/btnImportZip"
+            android:id="@+id/btnAnalyze"
             android:background="@drawable/btn_card"
             android:gravity="center"
-            android:textSize="13sp"
-            android:textColor="#ffffff"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="#ffd700"
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="44dp"
+            android:layout_height="52dp"
             android:layout_marginStart="6dp"
-            android:text="@string/records_import_zip"/>
+            android:text="@string/simlab_analyze"/>
     </LinearLayout>
     <TextView
-        android:textSize="14sp"
-        android:textColor="#666666"
+        android:id="@+id/btnCompare"
+        android:background="@drawable/btn_card"
         android:gravity="center"
-        android:id="@+id/tvEmpty"
-        android:padding="40dp"
-        android:visibility="gone"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#00ff88"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/records_empty"/>
-    <ListView
-        android:id="@+id/listRecords"
-        android:padding="8dp"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:divider="#333333"
-        android:dividerHeight="1dp"
-        android:layout_weight="1"/>
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:text="@string/simlab_compare"/>
 </LinearLayout>
