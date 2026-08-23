@@ -2,9 +2,13 @@ package com.geoscanner.app.ui.simlab;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.Gravity;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -80,8 +84,26 @@ public class SimAnalysisActivity extends AppCompatActivity {
         }
     }
 
+    private Bitmap captureScreenshot() {
+        try {
+            resultsContainer.setDrawingCacheEnabled(true);
+            int width = resultsContainer.getWidth();
+            int height = resultsContainer.getHeight();
+            if (width <= 0 || height <= 0) return null;
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            canvas.drawColor(0xFF111111);
+            resultsContainer.draw(canvas);
+            resultsContainer.setDrawingCacheEnabled(false);
+            return bitmap;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private void generateReport() {
-        File pdf = SimReportGenerator.generate(this, config, clusters);
+        Bitmap screenshot = captureScreenshot();
+        File pdf = SimReportGenerator.generate(this, config, clusters, screenshot);
         if (pdf == null) {
             Toast.makeText(this, getString(R.string.simreport_error), Toast.LENGTH_SHORT).show();
             return;
@@ -147,7 +169,121 @@ public class SimAnalysisActivity extends AppCompatActivity {
             card.addView(warn);
         }
 
+        TextView markLine = new TextView(this);
+        markLine.setTextColor(0xFF00FF88);
+        markLine.setTextSize(12);
+        markLine.setTypeface(markLine.getTypeface(), Typeface.BOLD);
+        markLine.setPadding(0, dp(6), 0, 0);
+        updateMarkLine(markLine, cluster);
+        card.addView(markLine);
+
+        TextView btnMark = new TextView(this);
+        btnMark.setText(getString(R.string.simanalysis_mark));
+        btnMark.setTextColor(0xFFFFFFFF);
+        btnMark.setGravity(Gravity.CENTER);
+        btnMark.setBackgroundResource(R.drawable.grid_cell);
+        btnMark.setTextSize(12);
+        btnMark.setPadding(0, dp(8), 0, dp(8));
+        LinearLayout.LayoutParams markBtnLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        markBtnLp.topMargin = dp(8);
+        btnMark.setLayoutParams(markBtnLp);
+        btnMark.setOnClickListener(v -> showMarkDialog(cluster, markLine));
+        card.addView(btnMark);
+
         return card;
+    }
+
+    private void updateMarkLine(TextView markLine, SimAnomalyCluster cluster) {
+        boolean hasMark = cluster.userMarkLabel != null && !cluster.userMarkLabel.trim().isEmpty();
+        markLine.setText(hasMark ? "🏷 " + cluster.userMarkLabel.trim() : "");
+        markLine.setVisibility(hasMark ? android.view.View.VISIBLE : android.view.View.GONE);
+    }
+
+    private void showMarkDialog(SimAnomalyCluster cluster, TextView markLine) {
+        int pad = dp(20);
+        int gap = dp(10);
+
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(pad, pad, pad, pad);
+
+        TextView title = new TextView(this);
+        title.setText(getString(R.string.simanalysis_mark_dialog_title));
+        title.setTextColor(0xFF00AAFF);
+        title.setTextSize(18);
+        title.setTypeface(title.getTypeface(), Typeface.BOLD);
+        title.setPadding(0, 0, 0, gap);
+        container.addView(title);
+
+        String[] presets = {getString(R.string.simanalysis_mark_target_a), getString(R.string.simanalysis_mark_target_b),
+                getString(R.string.simanalysis_mark_suspicious), getString(R.string.simanalysis_mark_recheck)};
+
+        EditText input = new EditText(this);
+        input.setText(cluster.userMarkLabel);
+        input.setHint(getString(R.string.simanalysis_mark_hint));
+        input.setTextColor(0xFFFFFFFF);
+        input.setHintTextColor(0xFF888888);
+        container.addView(input);
+
+        LinearLayout chipRow = new LinearLayout(this);
+        chipRow.setOrientation(LinearLayout.HORIZONTAL);
+        chipRow.setPadding(0, gap, 0, 0);
+        for (String preset : presets) {
+            TextView chip = new TextView(this);
+            chip.setText(preset);
+            chip.setTextColor(0xFFFFFFFF);
+            chip.setTextSize(11);
+            chip.setGravity(Gravity.CENTER);
+            chip.setBackgroundResource(R.drawable.grid_cell);
+            chip.setPadding(dp(8), dp(6), dp(8), dp(6));
+            LinearLayout.LayoutParams chipLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            chipLp.setMarginEnd(dp(4));
+            chip.setLayoutParams(chipLp);
+            chip.setOnClickListener(v -> input.setText(preset));
+            chipRow.addView(chip);
+        }
+        container.addView(chipRow);
+
+        LinearLayout buttonRow = new LinearLayout(this);
+        buttonRow.setOrientation(LinearLayout.HORIZONTAL);
+        buttonRow.setPadding(0, gap * 2, 0, 0);
+
+        TextView btnCancel = new TextView(this);
+        btnCancel.setText(getString(R.string.cancel));
+        btnCancel.setTextColor(0xFFFFFFFF);
+        btnCancel.setGravity(Gravity.CENTER);
+        btnCancel.setBackgroundResource(R.drawable.btn_card);
+        btnCancel.setPadding(0, gap, 0, gap);
+        LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        cancelParams.setMarginEnd(gap / 2);
+        btnCancel.setLayoutParams(cancelParams);
+
+        TextView btnSave = new TextView(this);
+        btnSave.setText(getString(R.string.simlab_target_save));
+        btnSave.setTextColor(0xFFFFFFFF);
+        btnSave.setGravity(Gravity.CENTER);
+        btnSave.setBackgroundResource(R.drawable.btn_primary);
+        btnSave.setPadding(0, gap, 0, gap);
+        LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        saveParams.setMarginStart(gap / 2);
+        btnSave.setLayoutParams(saveParams);
+
+        buttonRow.addView(btnCancel);
+        buttonRow.addView(btnSave);
+        container.addView(buttonRow);
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this, R.style.Theme_GeoScanner_Dialog)
+                .setView(container)
+                .create();
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnSave.setOnClickListener(v -> {
+            cluster.userMarkLabel = input.getText().toString().trim();
+            updateMarkLine(markLine, cluster);
+            dialog.dismiss();
+        });
+
+        dialog.show();
     }
 
     private void addLine(LinearLayout parent, String text) {

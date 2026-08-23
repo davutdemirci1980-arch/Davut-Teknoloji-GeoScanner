@@ -1,8 +1,10 @@
 package com.geoscanner.app.simulation;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.pdf.PdfDocument;
 
 import java.io.File;
@@ -23,7 +25,7 @@ public class SimReportGenerator {
     private static final int PAGE_HEIGHT = 842;
     private static final int MARGIN = 40;
 
-    public static File generate(Context context, SimRunConfig config, List<SimAnomalyCluster> clusters) {
+    public static File generate(Context context, SimRunConfig config, List<SimAnomalyCluster> clusters, Bitmap screenshot) {
         try {
             PdfDocument document = new PdfDocument();
             Writer w = new Writer(document);
@@ -31,6 +33,12 @@ public class SimReportGenerator {
             w.title("GeoScanner — Simülasyon Raporu");
             w.small(new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.US).format(new Date()));
             w.gap();
+
+            if (screenshot != null) {
+                w.header("Sonuç Ekranı Görüntüsü");
+                w.image(screenshot);
+                w.gap();
+            }
 
             w.header("Tarama Kurulumu");
             w.body(String.format(Locale.US, "Grid: %d x %d hücre, adım %.0f cm, desen: %s",
@@ -71,6 +79,9 @@ public class SimReportGenerator {
                         c.centerXM, c.centerYM, c.shapeLabel(), c.peakAmplitude));
                 w.small(String.format(Locale.US, "Derinlik tahmini: yarı-genişlik %.2f m / ters çözüm %.2f m (belirsizlik ±%.2f m)",
                         c.depthEstimateHalfWidthM, c.depthEstimateInversionM, c.depthUncertaintyM));
+                if (c.userMarkLabel != null && !c.userMarkLabel.trim().isEmpty()) {
+                    w.small("İşaret: " + c.userMarkLabel.trim());
+                }
                 if (c.falsePositiveRisk) {
                     w.small("Uyarı: " + c.falsePositiveReason);
                 }
@@ -166,6 +177,23 @@ public class SimReportGenerator {
 
         void gap() {
             y += 8;
+        }
+
+        void image(Bitmap bitmap) {
+            float maxWidth = PAGE_WIDTH - 2f * MARGIN;
+            float scale = Math.min(1f, maxWidth / bitmap.getWidth());
+            float drawWidth = bitmap.getWidth() * scale;
+            float drawHeight = bitmap.getHeight() * scale;
+            float maxHeight = PAGE_HEIGHT - 2f * MARGIN;
+            if (drawHeight > maxHeight) {
+                float shrink = maxHeight / drawHeight;
+                drawWidth *= shrink;
+                drawHeight *= shrink;
+            }
+            ensureSpace(drawHeight);
+            Rect dest = new Rect(MARGIN, (int) y, (int) (MARGIN + drawWidth), (int) (y + drawHeight));
+            canvas.drawBitmap(bitmap, null, dest, null);
+            y += drawHeight + 8;
         }
 
         void finish() {

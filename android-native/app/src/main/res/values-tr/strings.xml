@@ -160,6 +160,13 @@
     <string name="simcompare_quality_medium">Orta tekrarlanabilirlik</string>
     <string name="simcompare_score_title">Tekrarlanabilirlik Puanı</string>
     <string name="simcompare_title">Karşılaştırmalı Analiz</string>
+    <string name="simanalysis_mark">🏷 İşaretle</string>
+    <string name="simanalysis_mark_dialog_title">Bu Anomaliyi İşaretle</string>
+    <string name="simanalysis_mark_hint">Özel etiket…</string>
+    <string name="simanalysis_mark_recheck">Kontrol Edilecek</string>
+    <string name="simanalysis_mark_suspicious">Şüpheli Bölge</string>
+    <string name="simanalysis_mark_target_a">Hedef A</string>
+    <string name="simanalysis_mark_target_b">Hedef B</string>
     <string name="simanalysis_none">Gürültü eşiğinin üzerinde anomali kümesi bulunamadı.</string>
     <string name="simanalysis_summary">%d anomali kümesi tespit edildi</string>
     <string name="simanalysis_title">Yapay Zeka Analiz Sonuçları</string>

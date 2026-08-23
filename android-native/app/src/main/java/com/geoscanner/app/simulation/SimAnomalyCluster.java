@@ -22,6 +22,8 @@ public class SimAnomalyCluster {
     public String explanation;
     public boolean falsePositiveRisk;
     public String falsePositiveReason;
+    /** Free-text user marking, e.g. "Hedef A", "Şüpheli Bölge", "Kontrol Edilecek" (section 22). */
+    public String userMarkLabel = "";
 
     public String shapeLabel() {
         if (singlePointSpike) return "Tek Nokta";

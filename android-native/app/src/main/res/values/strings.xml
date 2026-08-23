@@ -160,6 +160,13 @@
     <string name="simcompare_quality_medium">Medium repeatability</string>
     <string name="simcompare_score_title">Repeatability Score</string>
     <string name="simcompare_title">Comparative Analysis</string>
+    <string name="simanalysis_mark">🏷 Mark</string>
+    <string name="simanalysis_mark_dialog_title">Mark This Anomaly</string>
+    <string name="simanalysis_mark_hint">Custom label…</string>
+    <string name="simanalysis_mark_recheck">Recheck</string>
+    <string name="simanalysis_mark_suspicious">Suspicious Zone</string>
+    <string name="simanalysis_mark_target_a">Target A</string>
+    <string name="simanalysis_mark_target_b">Target B</string>
     <string name="simanalysis_none">No anomaly clusters detected above the noise threshold.</string>
     <string name="simanalysis_summary">%d anomaly cluster(s) detected</string>
     <string name="simanalysis_title">AI Analysis Results</string>
