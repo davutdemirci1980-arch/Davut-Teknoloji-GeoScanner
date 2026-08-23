@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -216,17 +217,27 @@ public class FieldFindActivity extends AppCompatActivity {
     }
 
     private void promptForApiKey() {
+        int pad = (int) (20 * getResources().getDisplayMetrics().density);
+
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(pad, pad / 2, pad, 0);
+
+        TextView message = new TextView(this);
+        message.setText(getString(R.string.field_find_no_api_key));
+        message.setTextColor(0xFFCCCCCC);
+        message.setPadding(0, 0, 0, pad / 2);
+        container.addView(message);
+
         EditText input = new EditText(this);
         input.setHint(R.string.settings_ai_key_hint);
         input.setTextColor(0xFFFFFFFF);
         input.setHintTextColor(0xFF888888);
-        int pad = (int) (16 * getResources().getDisplayMetrics().density);
-        input.setPadding(pad, pad, pad, pad);
+        container.addView(input);
 
-        new android.app.AlertDialog.Builder(this)
+        new android.app.AlertDialog.Builder(this, R.style.Theme_GeoScanner_Dialog)
                 .setTitle(getString(R.string.settings_ai_key_dialog_title))
-                .setMessage(getString(R.string.field_find_no_api_key))
-                .setView(input)
+                .setView(container)
                 .setPositiveButton(android.R.string.ok, (dialog, which) -> {
                     String key = input.getText().toString().trim();
                     if (!key.isEmpty()) {
