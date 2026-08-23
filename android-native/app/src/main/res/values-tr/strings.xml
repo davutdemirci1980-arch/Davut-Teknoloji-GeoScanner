@@ -18,7 +18,7 @@
     <string name="field_find_analyzing">Yapay zeka fotoğrafı analiz ediyor…</string>
     <string name="field_find_camera_permission">Kamera izni gerekli</string>
     <string name="field_find_error">Analiz hatası: %s</string>
-    <string name="field_find_no_api_key">Fotoğraf analizi için önce AI API anahtarınızı girin</string>
+    <string name="field_find_no_api_key">Fotoğraf analizi için önce ücretsiz Google AI Studio API anahtarınızı girin</string>
     <string name="field_find_no_photo">Henüz fotoğraf seçilmedi</string>
     <string name="field_find_pick_gallery">Galeriden Seç</string>
     <string name="field_find_pick_gallery_desc">Mevcut bir fotoğraf seçin</string>
@@ -123,10 +123,10 @@
     <string name="scan_receiving">Veri alınıyor…</string>
     <string name="scan_record">NOKTA KAYDET</string>
     <string name="scan_saved">Kaydedildi: %s</string>
-    <string name="settings_ai_key_dialog_msg">Bulgu fotoğraflarını AI görsel analiz servisine göndermek için kullanılır. Yalnızca bu cihazda saklanır.</string>
-    <string name="settings_ai_key_dialog_title">AI API Anahtarı</string>
-    <string name="settings_ai_key_hint">sk-ant-…</string>
-    <string name="settings_ai_key_label">AI API Anahtarı</string>
+    <string name="settings_ai_key_dialog_msg">Ücretsiz Google AI Studio API anahtarı (aistudio.google.com). Bulgu fotoğraflarını AI görsel analiz servisine göndermek için kullanılır. Yalnızca bu cihazda saklanır.</string>
+    <string name="settings_ai_key_dialog_title">AI API Anahtarı (ücretsiz — Google AI Studio)</string>
+    <string name="settings_ai_key_hint">AIza…</string>
+    <string name="settings_ai_key_label">AI API Anahtarı (ücretsiz)</string>
     <string name="settings_ai_key_not_set">Ayarlanmadı</string>
     <string name="settings_ai_key_saved">API anahtarı kaydedildi</string>
     <string name="settings_ai_key_set">Yapılandırıldı</string>

@@ -7,7 +7,7 @@ public class AiSettings {
     private static final String PREFS_NAME = "geoscanner_prefs";
     private static final String KEY_API_KEY = "ai_api_key";
     private static final String KEY_MODEL = "ai_model";
-    public static final String DEFAULT_MODEL = "claude-sonnet-5";
+    public static final String DEFAULT_MODEL = "gemini-flash-latest";
 
     public static String getApiKey(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);

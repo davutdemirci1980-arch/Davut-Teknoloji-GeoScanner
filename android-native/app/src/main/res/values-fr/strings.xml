@@ -18,7 +18,7 @@
     <string name="field_find_analyzing">L\'IA analyse la photo…</string>
     <string name="field_find_camera_permission">Autorisation caméra requise</string>
     <string name="field_find_error">Erreur d\'analyse : %s</string>
-    <string name="field_find_no_api_key">Entrez votre clé API IA pour lancer l\'analyse photo</string>
+    <string name="field_find_no_api_key">Entrez votre clé API Google AI Studio gratuite pour lancer l\'analyse photo</string>
     <string name="field_find_no_photo">Aucune photo sélectionnée</string>
     <string name="field_find_pick_gallery">Choisir dans la Galerie</string>
     <string name="field_find_pick_gallery_desc">Sélectionner une photo existante</string>
@@ -123,10 +123,10 @@
     <string name="scan_receiving">Réception des données…</string>
     <string name="scan_record">ENREGISTRER POINT</string>
     <string name="scan_saved">Enregistré : %s</string>
-    <string name="settings_ai_key_dialog_msg">Utilisée pour envoyer les photos de découverte au service de vision IA. Stockée uniquement sur cet appareil.</string>
-    <string name="settings_ai_key_dialog_title">Clé API IA</string>
-    <string name="settings_ai_key_hint">sk-ant-…</string>
-    <string name="settings_ai_key_label">Clé API IA</string>
+    <string name="settings_ai_key_dialog_msg">Clé API Google AI Studio gratuite (aistudio.google.com), utilisée pour envoyer les photos de découverte au service de vision IA. Stockée uniquement sur cet appareil.</string>
+    <string name="settings_ai_key_dialog_title">Clé API IA (gratuite — Google AI Studio)</string>
+    <string name="settings_ai_key_hint">AIza…</string>
+    <string name="settings_ai_key_label">Clé API IA (gratuite)</string>
     <string name="settings_ai_key_not_set">Non définie</string>
     <string name="settings_ai_key_saved">Clé API enregistrée</string>
     <string name="settings_ai_key_set">Configurée</string>

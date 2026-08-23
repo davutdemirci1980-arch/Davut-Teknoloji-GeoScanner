@@ -18,7 +18,7 @@
     <string name="field_find_analyzing">AI is analyzing the photo…</string>
     <string name="field_find_camera_permission">Camera permission is required</string>
     <string name="field_find_error">Analysis error: %s</string>
-    <string name="field_find_no_api_key">Enter your AI API key to run photo analysis</string>
+    <string name="field_find_no_api_key">Enter your free Google AI Studio API key to run photo analysis</string>
     <string name="field_find_no_photo">No photo selected yet</string>
     <string name="field_find_pick_gallery">Choose from Gallery</string>
     <string name="field_find_pick_gallery_desc">Pick an existing photo</string>
@@ -123,10 +123,10 @@
     <string name="scan_receiving">Receiving data…</string>
     <string name="scan_record">RECORD POINT</string>
     <string name="scan_saved">Saved: %s</string>
-    <string name="settings_ai_key_dialog_msg">Used to send field-find photos to the AI vision service. Stored only on this device.</string>
-    <string name="settings_ai_key_dialog_title">AI API Key</string>
-    <string name="settings_ai_key_hint">sk-ant-…</string>
-    <string name="settings_ai_key_label">AI API Key</string>
+    <string name="settings_ai_key_dialog_msg">Free Google AI Studio API key (aistudio.google.com), used to send field-find photos to the AI vision service. Stored only on this device.</string>
+    <string name="settings_ai_key_dialog_title">AI API Key (free — Google AI Studio)</string>
+    <string name="settings_ai_key_hint">AIza…</string>
+    <string name="settings_ai_key_label">AI API Key (free)</string>
     <string name="settings_ai_key_not_set">Not set</string>
     <string name="settings_ai_key_saved">API key saved</string>
     <string name="settings_ai_key_set">Configured</string>

@@ -15,16 +15,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Sends a field-find photo to the Anthropic Messages API (vision-capable model) for analysis.
+ * Sends a field-find photo to the Google Gemini API (generateContent, vision-capable model)
+ * for analysis. Gemini has a free usage tier via a Google AI Studio API key.
  * Requires an API key configured in Settings (stored via {@link AiSettings}).
  */
 public class AiVisionClient {
     private static final String TAG = "AiVisionClient";
-    private static final String API_URL = "https://api.anthropic.com/v1/messages";
-    private static final String ANTHROPIC_VERSION = "2023-06-01";
+    private static final String API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
     private static final int MAX_DIMENSION = 1280;
     private static final int CONNECT_TIMEOUT_MS = 20000;
     private static final int READ_TIMEOUT_MS = 60000;
@@ -51,53 +52,46 @@ public class AiVisionClient {
     private static String performRequest(String apiKey, String model, Bitmap photo, String promptText) throws IOException {
         String base64Image = encodeJpeg(photo);
 
-        JSONObject imageSource = new JSONObject();
         try {
-            imageSource.put("type", "base64");
-            imageSource.put("media_type", "image/jpeg");
-            imageSource.put("data", base64Image);
+            JSONObject inlineData = new JSONObject();
+            inlineData.put("mime_type", "image/jpeg");
+            inlineData.put("data", base64Image);
 
-            JSONObject imageBlock = new JSONObject();
-            imageBlock.put("type", "image");
-            imageBlock.put("source", imageSource);
+            JSONObject imagePart = new JSONObject();
+            imagePart.put("inline_data", inlineData);
 
-            JSONObject textBlock = new JSONObject();
-            textBlock.put("type", "text");
-            textBlock.put("text", promptText);
+            JSONObject textPart = new JSONObject();
+            textPart.put("text", promptText);
 
-            JSONArray content = new JSONArray();
-            content.put(imageBlock);
-            content.put(textBlock);
+            JSONArray parts = new JSONArray();
+            parts.put(textPart);
+            parts.put(imagePart);
 
-            JSONObject message = new JSONObject();
-            message.put("role", "user");
-            message.put("content", content);
+            JSONObject content = new JSONObject();
+            content.put("parts", parts);
 
-            JSONArray messages = new JSONArray();
-            messages.put(message);
+            JSONArray contents = new JSONArray();
+            contents.put(content);
 
             JSONObject body = new JSONObject();
-            body.put("model", model);
-            body.put("max_tokens", 1024);
-            body.put("messages", messages);
+            body.put("contents", contents);
 
-            return postToApi(apiKey, body);
+            return postToApi(apiKey, model, body);
         } catch (org.json.JSONException e) {
             throw new IOException("Request build error: " + e.getMessage());
         }
     }
 
-    private static String postToApi(String apiKey, JSONObject body) throws IOException {
+    private static String postToApi(String apiKey, String model, JSONObject body) throws IOException {
         HttpURLConnection conn = null;
         try {
-            URL url = new URL(API_URL);
-            conn = (HttpURLConnection) url.openConnection();
+            String url = API_BASE_URL + URLEncoder.encode(model, "UTF-8")
+                    + ":generateContent?key=" + URLEncoder.encode(apiKey, "UTF-8");
+            conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
             conn.setReadTimeout(READ_TIMEOUT_MS);
-            conn.setRequestProperty("x-api-key", apiKey);
-            conn.setRequestProperty("anthropic-version", ANTHROPIC_VERSION);
             conn.setRequestProperty("content-type", "application/json");
 
             try (OutputStream os = conn.getOutputStream()) {
@@ -121,16 +115,22 @@ public class AiVisionClient {
     private static String extractText(String responseBody) throws IOException {
         try {
             JSONObject json = new JSONObject(responseBody);
-            JSONArray content = json.optJSONArray("content");
-            if (content == null || content.length() == 0) {
+            JSONArray candidates = json.optJSONArray("candidates");
+            if (candidates == null || candidates.length() == 0) {
                 throw new IOException("Empty response from AI");
             }
+            JSONObject firstCandidate = candidates.getJSONObject(0);
+            JSONObject content = firstCandidate.optJSONObject("content");
+            JSONArray parts = content != null ? content.optJSONArray("parts") : null;
+            if (parts == null || parts.length() == 0) {
+                throw new IOException("No text content in AI response");
+            }
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < content.length(); i++) {
-                JSONObject block = content.getJSONObject(i);
-                if ("text".equals(block.optString("type"))) {
+            for (int i = 0; i < parts.length(); i++) {
+                String text = parts.getJSONObject(i).optString("text", "");
+                if (!text.isEmpty()) {
                     if (sb.length() > 0) sb.append("\n");
-                    sb.append(block.optString("text"));
+                    sb.append(text);
                 }
             }
             if (sb.length() == 0) throw new IOException("No text content in AI response");
