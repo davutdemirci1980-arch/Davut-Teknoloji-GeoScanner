@@ -27,6 +27,35 @@
             android:layout_weight="1"
             android:paddingStart="12dp"/>
     </LinearLayout>
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="12dp"
+        android:paddingBottom="8dp">
+        <TextView
+            android:id="@+id/btnExportZip"
+            android:background="@drawable/btn_card"
+            android:gravity="center"
+            android:textSize="13sp"
+            android:textColor="#ffffff"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="44dp"
+            android:layout_marginEnd="6dp"
+            android:text="@string/records_export_zip"/>
+        <TextView
+            android:id="@+id/btnImportZip"
+            android:background="@drawable/btn_card"
+            android:gravity="center"
+            android:textSize="13sp"
+            android:textColor="#ffffff"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="44dp"
+            android:layout_marginStart="6dp"
+            android:text="@string/records_import_zip"/>
+    </LinearLayout>
     <TextView
         android:textSize="14sp"
         android:textColor="#666666"

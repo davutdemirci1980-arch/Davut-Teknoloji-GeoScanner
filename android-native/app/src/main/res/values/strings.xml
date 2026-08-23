@@ -97,6 +97,11 @@
     <string name="records_3d_view">3D IsoSurface View</string>
     <string name="records_cancel">Cancel</string>
     <string name="records_cannot_read">Cannot read file</string>
+    <string name="records_export_zip">📦 Export All as ZIP</string>
+    <string name="records_export_zip_done">%d file(s) zipped</string>
+    <string name="records_import_zip">📥 Import ZIP</string>
+    <string name="records_import_zip_done">%1$d imported, %2$d skipped (already exist), %3$d corrupted (skipped)</string>
+    <string name="records_zip_error">ZIP error: %s</string>
     <string name="records_compare_note">Real device file: %s. Grid step and sensor height are assumed defaults (not stored in this file format).</string>
     <string name="records_compare_simulation">🧠 Compare with Simulation</string>
     <string name="records_delete">Delete</string>

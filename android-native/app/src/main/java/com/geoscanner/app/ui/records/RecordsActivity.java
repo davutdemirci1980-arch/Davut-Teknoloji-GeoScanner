@@ -3,6 +3,7 @@ package com.geoscanner.app.ui.records;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
@@ -10,6 +11,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 
 import com.geoscanner.app.R;
 import com.geoscanner.app.data.FileManager;
@@ -23,13 +25,23 @@ import com.geoscanner.app.ui.simlab.SimAnalysisActivity;
 import com.geoscanner.app.utils.LocaleHelper;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.zip.CRC32;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 public class RecordsActivity extends AppCompatActivity {
+    private static final int REQUEST_IMPORT_ZIP = 500;
+
     private ArrayAdapter<String> adapter;
     private List<String> fileNames;
     private List<File> scanFiles;
@@ -59,6 +71,108 @@ public class RecordsActivity extends AppCompatActivity {
             return true;
         });
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+        findViewById(R.id.btnExportZip).setOnClickListener(v -> exportZip());
+        findViewById(R.id.btnImportZip).setOnClickListener(v -> importZip());
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_IMPORT_ZIP || resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        doImportZip(data.getData());
+    }
+
+    private void exportZip() {
+        List<File> files = FileManager.listScanFiles(this);
+        if (files.isEmpty()) {
+            Toast.makeText(this, getString(R.string.records_empty), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            File dir = new File(getExternalFilesDir(null), "backups");
+            if (!dir.exists()) dir.mkdirs();
+            File zipFile = new File(dir, "GeoScanner_Yedek_" + System.currentTimeMillis() + ".zip");
+
+            try (FileOutputStream fos = new FileOutputStream(zipFile);
+                 ZipOutputStream zos = new ZipOutputStream(fos)) {
+                byte[] buffer = new byte[8192];
+                for (File f : files) {
+                    zos.putNextEntry(new ZipEntry(f.getName()));
+                    try (FileInputStream fis = new FileInputStream(f)) {
+                        int len;
+                        while ((len = fis.read(buffer)) > 0) zos.write(buffer, 0, len);
+                    }
+                    zos.closeEntry();
+                }
+            }
+
+            Toast.makeText(this, String.format(getString(R.string.records_export_zip_done), files.size()), Toast.LENGTH_LONG).show();
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", zipFile);
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("application/zip");
+            shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+            shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(shareIntent, getString(R.string.records_export_zip)));
+        } catch (Exception e) {
+            Toast.makeText(this, String.format(getString(R.string.records_zip_error), e.getMessage()), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void importZip() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("application/zip");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(Intent.createChooser(intent, getString(R.string.records_import_zip)), REQUEST_IMPORT_ZIP);
+    }
+
+    private void doImportZip(Uri uri) {
+        int imported = 0, skippedExisting = 0, corrupted = 0;
+        File dir = FileManager.getScanDirectory(this);
+
+        try (InputStream is = getContentResolver().openInputStream(uri);
+             ZipInputStream zis = new ZipInputStream(is)) {
+            byte[] buffer = new byte[8192];
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (entry.isDirectory()) continue;
+                String name = new File(entry.getName()).getName();
+                if (name.isEmpty()) continue;
+
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                int len;
+                while ((len = zis.read(buffer)) > 0) baos.write(buffer, 0, len);
+                byte[] content = baos.toByteArray();
+
+                long storedCrc = entry.getCrc();
+                if (storedCrc >= 0) {
+                    CRC32 crc32 = new CRC32();
+                    crc32.update(content);
+                    if (crc32.getValue() != storedCrc) {
+                        corrupted++;
+                        zis.closeEntry();
+                        continue;
+                    }
+                }
+
+                File destFile = new File(dir, name);
+                if (destFile.exists()) {
+                    skippedExisting++;
+                    zis.closeEntry();
+                    continue;
+                }
+                try (OutputStream os = new FileOutputStream(destFile)) {
+                    os.write(content);
+                }
+                imported++;
+                zis.closeEntry();
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, String.format(getString(R.string.records_zip_error), e.getMessage()), Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        Toast.makeText(this, String.format(Locale.US, getString(R.string.records_import_zip_done), imported, skippedExisting, corrupted), Toast.LENGTH_LONG).show();
+        loadFiles();
     }
 
     @Override

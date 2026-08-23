@@ -97,6 +97,11 @@
     <string name="records_3d_view">3D IsoSurface Görünüm</string>
     <string name="records_cancel">İptal</string>
     <string name="records_cannot_read">Dosya okunamadı</string>
+    <string name="records_export_zip">📦 Tümünü ZIP Olarak Dışa Aktar</string>
+    <string name="records_export_zip_done">%d dosya ziplendi</string>
+    <string name="records_import_zip">📥 ZIP İçe Aktar</string>
+    <string name="records_import_zip_done">%1$d içe aktarıldı, %2$d atlandı (zaten var), %3$d bozuk (atlandı)</string>
+    <string name="records_zip_error">ZIP hatası: %s</string>
     <string name="records_compare_note">Gerçek cihaz dosyası: %s. Grid adımı ve sensör yüksekliği varsayılan değerler olarak alındı (bu dosya biçiminde saklanmıyor).</string>
     <string name="records_compare_simulation">🧠 Simülasyonla Karşılaştır</string>
     <string name="records_delete">Sil</string>
