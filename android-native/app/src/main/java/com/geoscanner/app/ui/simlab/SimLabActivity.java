@@ -8,6 +8,7 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
@@ -21,11 +22,16 @@ import com.geoscanner.app.R;
 import com.geoscanner.app.data.FileManager;
 import com.geoscanner.app.data.ScanDataPoint;
 import com.geoscanner.app.simulation.GroundType;
+import com.geoscanner.app.simulation.InterferenceType;
+import com.geoscanner.app.simulation.OperatorErrorConfig;
 import com.geoscanner.app.simulation.ScanPattern;
 import com.geoscanner.app.simulation.SensorMode;
+import com.geoscanner.app.simulation.SimCalibrationConfig;
 import com.geoscanner.app.simulation.SimDataPoint;
 import com.geoscanner.app.simulation.SimGridConfig;
 import com.geoscanner.app.simulation.SimGroundConfig;
+import com.geoscanner.app.simulation.SimInterferenceSource;
+import com.geoscanner.app.simulation.SimRunConfig;
 import com.geoscanner.app.simulation.SimScenarioPresets;
 import com.geoscanner.app.simulation.SimSensorConfig;
 import com.geoscanner.app.simulation.SimTarget;
@@ -60,8 +66,14 @@ public class SimLabActivity extends AppCompatActivity {
     private EditText etStep;
     private Spinner spPattern;
     private Spinner spPreset;
+    private LinearLayout interferenceListContainer;
+    private CheckBox cbOperatorError;
+    private SeekBar sbOperatorErrorSeverity;
+    private CheckBox cbReferenceFirstColumn;
+    private CheckBox cbBalanceDualSensors;
 
     private final List<SimTarget> targets = new ArrayList<>();
+    private final List<SimInterferenceSource> interferences = new ArrayList<>();
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -80,6 +92,9 @@ public class SimLabActivity extends AppCompatActivity {
         findViewById(R.id.btnStartSim).setOnClickListener(v -> startSimulation());
 
         buildGroundSection();
+        buildInterferenceSection();
+        buildOperatorErrorSection();
+        buildCalibrationSection();
         buildSensorSection();
         buildGridSection();
         buildPresetSection();
@@ -177,6 +192,170 @@ public class SimLabActivity extends AppCompatActivity {
         sbInterference.setMax(100);
         sbInterference.setProgress(40);
         c.addView(sbInterference);
+    }
+
+    private void buildInterferenceSection() {
+        LinearLayout c = card(getString(R.string.simlab_section_interference));
+        interferenceListContainer = new LinearLayout(this);
+        interferenceListContainer.setOrientation(LinearLayout.VERTICAL);
+        c.addView(interferenceListContainer);
+
+        TextView btnAdd = new TextView(this);
+        btnAdd.setText(getString(R.string.simlab_interference_add));
+        btnAdd.setTextColor(0xFFFFFFFF);
+        btnAdd.setGravity(Gravity.CENTER);
+        btnAdd.setBackgroundResource(R.drawable.btn_card);
+        btnAdd.setPadding(0, dp(12), 0, dp(12));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(10);
+        btnAdd.setLayoutParams(lp);
+        btnAdd.setOnClickListener(v -> showAddInterferenceDialog());
+        c.addView(btnAdd);
+
+        renderInterferenceList();
+    }
+
+    private void renderInterferenceList() {
+        interferenceListContainer.removeAllViews();
+        if (interferences.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText(getString(R.string.simlab_interference_empty));
+            empty.setTextColor(0xFF888888);
+            empty.setTextSize(13);
+            interferenceListContainer.addView(empty);
+            return;
+        }
+        for (int i = 0; i < interferences.size(); i++) {
+            SimInterferenceSource s = interferences.get(i);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(0, dp(6), 0, dp(6));
+
+            TextView tv = new TextView(this);
+            tv.setText(String.format(Locale.US, "%d. %s  (%.2f, %.2f)m", i + 1, s.label(), s.xM, s.yM));
+            tv.setTextColor(0xFFFFFFFF);
+            tv.setTextSize(12);
+            tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+            TextView remove = new TextView(this);
+            remove.setText("✕");
+            remove.setTextColor(0xFFFF4444);
+            remove.setPadding(dp(12), 0, dp(4), 0);
+            int idx = i;
+            remove.setOnClickListener(v -> {
+                interferences.remove(idx);
+                renderInterferenceList();
+            });
+
+            row.addView(tv);
+            row.addView(remove);
+            interferenceListContainer.addView(row);
+        }
+    }
+
+    private void showAddInterferenceDialog() {
+        int pad = dp(20);
+        int gap = dp(10);
+
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(pad, pad, pad, pad);
+
+        TextView title = new TextView(this);
+        title.setText(getString(R.string.simlab_interference_dialog_title));
+        title.setTextColor(0xFF00AAFF);
+        title.setTextSize(18);
+        title.setTypeface(title.getTypeface(), Typeface.BOLD);
+        title.setPadding(0, 0, 0, gap);
+        container.addView(title);
+
+        Spinner spType = spinner(container, getString(R.string.simlab_target_type), InterferenceType.displayNames());
+        SimGridConfig grid = currentGridConfig();
+        double cx = (grid.cols - 1) * grid.stepM() / 2.0;
+        double cy = (grid.rows - 1) * grid.stepM() / 2.0;
+        EditText etX = numberField(container, getString(R.string.simlab_target_x), String.format(Locale.US, "%.2f", cx));
+        EditText etY = numberField(container, getString(R.string.simlab_target_y), String.format(Locale.US, "%.2f", cy));
+
+        LinearLayout buttonRow = new LinearLayout(this);
+        buttonRow.setOrientation(LinearLayout.HORIZONTAL);
+        buttonRow.setPadding(0, gap * 2, 0, 0);
+
+        TextView btnCancel = new TextView(this);
+        btnCancel.setText(getString(R.string.cancel));
+        btnCancel.setTextColor(0xFFFFFFFF);
+        btnCancel.setGravity(Gravity.CENTER);
+        btnCancel.setBackgroundResource(R.drawable.btn_card);
+        btnCancel.setPadding(0, gap, 0, gap);
+        LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        cancelParams.setMarginEnd(gap / 2);
+        btnCancel.setLayoutParams(cancelParams);
+
+        TextView btnSave = new TextView(this);
+        btnSave.setText(getString(R.string.simlab_target_save));
+        btnSave.setTextColor(0xFFFFFFFF);
+        btnSave.setGravity(Gravity.CENTER);
+        btnSave.setBackgroundResource(R.drawable.btn_primary);
+        btnSave.setPadding(0, gap, 0, gap);
+        LinearLayout.LayoutParams saveParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        saveParams.setMarginStart(gap / 2);
+        btnSave.setLayoutParams(saveParams);
+
+        buttonRow.addView(btnCancel);
+        buttonRow.addView(btnSave);
+        container.addView(buttonRow);
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this, R.style.Theme_GeoScanner_Dialog)
+                .setView(container)
+                .create();
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnSave.setOnClickListener(v -> {
+            InterferenceType type = InterferenceType.values()[spType.getSelectedItemPosition()];
+            double x = parseOr(etX, cx);
+            double y = parseOr(etY, cy);
+            interferences.add(new SimInterferenceSource(type, x, y));
+            renderInterferenceList();
+            dialog.dismiss();
+        });
+
+        dialog.show();
+    }
+
+    private void buildOperatorErrorSection() {
+        LinearLayout c = card(getString(R.string.simlab_section_operator_error));
+
+        cbOperatorError = new CheckBox(this);
+        cbOperatorError.setText(getString(R.string.simlab_operator_error_enable));
+        cbOperatorError.setTextColor(0xFFFFFFFF);
+        c.addView(cbOperatorError);
+
+        label(c, getString(R.string.simlab_operator_error_severity));
+        sbOperatorErrorSeverity = new SeekBar(this);
+        sbOperatorErrorSeverity.setMax(100);
+        sbOperatorErrorSeverity.setProgress(50);
+        c.addView(sbOperatorErrorSeverity);
+
+        TextView hint = new TextView(this);
+        hint.setText(getString(R.string.simlab_operator_error_hint));
+        hint.setTextColor(0xFF888888);
+        hint.setTextSize(11);
+        hint.setPadding(0, dp(6), 0, 0);
+        c.addView(hint);
+    }
+
+    private void buildCalibrationSection() {
+        LinearLayout c = card(getString(R.string.simlab_section_calibration));
+
+        cbReferenceFirstColumn = new CheckBox(this);
+        cbReferenceFirstColumn.setText(getString(R.string.simlab_calibration_reference_column));
+        cbReferenceFirstColumn.setTextColor(0xFFFFFFFF);
+        c.addView(cbReferenceFirstColumn);
+
+        cbBalanceDualSensors = new CheckBox(this);
+        cbBalanceDualSensors.setText(getString(R.string.simlab_calibration_balance_dual));
+        cbBalanceDualSensors.setTextColor(0xFFFFFFFF);
+        c.addView(cbBalanceDualSensors);
     }
 
     private void buildSensorSection() {
@@ -401,26 +580,71 @@ public class SimLabActivity extends AppCompatActivity {
         return g;
     }
 
+    private OperatorErrorConfig currentOperatorErrorConfig() {
+        OperatorErrorConfig e = new OperatorErrorConfig();
+        e.enabled = cbOperatorError.isChecked();
+        double severity = sbOperatorErrorSeverity.getProgress() / 50.0;
+        e.walkingSpeedVariation *= severity;
+        e.heightWobble *= severity;
+        e.tiltVibration *= severity;
+        e.lineDrift *= severity;
+        e.missedPointRate *= severity;
+        e.turnErrorRate *= severity;
+        return e;
+    }
+
+    private SimCalibrationConfig currentCalibrationConfig() {
+        SimCalibrationConfig c = new SimCalibrationConfig();
+        c.referenceFirstColumn = cbReferenceFirstColumn.isChecked();
+        c.balanceDualSensors = cbBalanceDualSensors.isChecked();
+        return c;
+    }
+
+    private SimRunConfig currentRunConfig() {
+        SimRunConfig config = new SimRunConfig();
+        config.targets.addAll(targets);
+        config.interferences.addAll(interferences);
+        config.ground = currentGroundConfig();
+        config.sensor = currentSensorConfig();
+        config.grid = currentGridConfig();
+        config.operatorError = currentOperatorErrorConfig();
+        config.calibration = currentCalibrationConfig();
+        return config;
+    }
+
     // ---------------------------------------------------------------- run
 
-    private void startSimulation() {
-        SimGridConfig grid = currentGridConfig();
-        SimSensorConfig sensor = currentSensorConfig();
-        SimGroundConfig ground = currentGroundConfig();
-
-        List<SimDataPoint> raw = SimulationEngine.generate(targets, ground, sensor, grid, System.currentTimeMillis());
-
+    private List<ScanDataPoint> convert(List<SimDataPoint> raw) {
         List<ScanDataPoint> converted = new ArrayList<>(raw.size());
         for (SimDataPoint p : raw) {
             converted.add(new ScanDataPoint(p.gridX, p.gridY, p.dominantDepthM * 100.0, p.displayValue));
         }
         Collections.sort(converted, (a, b) -> a.y != b.y ? Integer.compare(a.y, b.y) : Integer.compare(a.x, b.x));
+        return converted;
+    }
 
-        String name = "SIM_" + System.currentTimeMillis();
+    private void startSimulation() {
+        SimRunConfig config = currentRunConfig();
+        long seed = System.currentTimeMillis();
+
+        List<SimDataPoint> raw = SimulationEngine.generate(config, seed, config.operatorError.enabled);
+        List<ScanDataPoint> converted = convert(raw);
+
+        String suffix = config.operatorError.enabled ? "_hatali" : "";
+        String name = "SIM_" + seed + suffix;
         File file = FileManager.saveCSV(this, name, converted);
         if (file == null) {
             Toast.makeText(this, getString(R.string.simlab_save_error), Toast.LENGTH_SHORT).show();
             return;
+        }
+
+        if (config.operatorError.enabled) {
+            List<SimDataPoint> cleanRaw = SimulationEngine.generate(config, seed, false);
+            List<ScanDataPoint> cleanConverted = convert(cleanRaw);
+            File cleanFile = FileManager.saveCSV(this, "SIM_" + seed + "_temiz", cleanConverted);
+            if (cleanFile != null) {
+                Toast.makeText(this, getString(R.string.simlab_clean_saved), Toast.LENGTH_LONG).show();
+            }
         }
 
         Toast.makeText(this, getString(R.string.simlab_generated, converted.size()), Toast.LENGTH_SHORT).show();

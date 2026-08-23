@@ -21,5 +21,7 @@ public class SimDataPoint {
     public double displayValue;
     /** Depth (m) of whichever target dominates this point's signal; feeds the existing depth-layered 3D/4D extrusion. */
     public double dominantDepthM;
+    /** True when the operator-error simulation dropped the real reading at this point (recorded as background only). */
+    public boolean missed;
     public final boolean isSimulation = true;
 }
