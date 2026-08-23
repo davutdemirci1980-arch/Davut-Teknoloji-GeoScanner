@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -12,10 +13,12 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.geoscanner.app.R;
 import com.geoscanner.app.ui.main.MainActivity;
+import com.geoscanner.app.utils.AiSettings;
 import com.geoscanner.app.utils.LocaleHelper;
 
 public class SettingsActivity extends AppCompatActivity {
     private TextView tvCurrentLang;
+    private TextView tvAiKeyStatus;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -29,10 +32,40 @@ public class SettingsActivity extends AppCompatActivity {
         getWindow().setStatusBarColor(0xFF111111);
 
         tvCurrentLang = findViewById(R.id.tvCurrentLang);
+        tvAiKeyStatus = findViewById(R.id.tvAiKeyStatus);
         updateCurrentLanguageLabel();
+        updateAiKeyStatusLabel();
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
         findViewById(R.id.btnLanguage).setOnClickListener(v -> showLanguageDialog());
+        findViewById(R.id.btnAiApiKey).setOnClickListener(v -> showAiApiKeyDialog());
+    }
+
+    private void updateAiKeyStatusLabel() {
+        boolean hasKey = AiSettings.hasApiKey(this);
+        tvAiKeyStatus.setText(hasKey ? getString(R.string.settings_ai_key_set) : getString(R.string.settings_ai_key_not_set));
+    }
+
+    private void showAiApiKeyDialog() {
+        EditText input = new EditText(this);
+        input.setText(AiSettings.getApiKey(this));
+        input.setHint(R.string.settings_ai_key_hint);
+        input.setTextColor(0xFFFFFFFF);
+        input.setHintTextColor(0xFF888888);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        input.setPadding(pad, pad, pad, pad);
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.settings_ai_key_dialog_title))
+                .setMessage(getString(R.string.settings_ai_key_dialog_msg))
+                .setView(input)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    AiSettings.setApiKey(this, input.getText().toString());
+                    updateAiKeyStatusLabel();
+                    Toast.makeText(this, getString(R.string.settings_ai_key_saved), Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private void updateCurrentLanguageLabel() {

@@ -12,8 +12,10 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:theme="@style/Theme.GeoScanner"
@@ -60,11 +62,22 @@
         <activity android:name=".ui.isosurface.IsoSurfaceActivity" android:screenOrientation="landscape" android:keepScreenOn="true" />
         <activity android:name=".ui.records.RecordsActivity" android:screenOrientation="portrait" />
         <activity android:name=".ui.settings.SettingsActivity" android:screenOrientation="portrait" />
+        <activity android:name=".ui.fieldfind.FieldFindActivity" android:screenOrientation="portrait" />
         <activity
             android:name=".ui.voxler4d.Pro4DVoxlerActivity"
             android:screenOrientation="landscape"
             android:configChanges="screenSize|orientation"
             android:keepScreenOn="true"
             android:hardwareAccelerated="true" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>
