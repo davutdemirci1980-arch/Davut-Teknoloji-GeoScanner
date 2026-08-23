@@ -90,6 +90,7 @@ public class SimLabActivity extends AppCompatActivity {
         dynamicContainer = findViewById(R.id.dynamicContainer);
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
         findViewById(R.id.btnStartSim).setOnClickListener(v -> startSimulation());
+        findViewById(R.id.btnAnalyze).setOnClickListener(v -> runAnalysis());
 
         buildGroundSection();
         buildInterferenceSection();
@@ -650,6 +651,24 @@ public class SimLabActivity extends AppCompatActivity {
         Toast.makeText(this, getString(R.string.simlab_generated, converted.size()), Toast.LENGTH_SHORT).show();
         Intent intent = new Intent(this, ScanPreviewActivity.class);
         intent.putExtra("filePath", file.getAbsolutePath());
+        startActivity(intent);
+    }
+
+    private void runAnalysis() {
+        if (targets.isEmpty()) {
+            Toast.makeText(this, getString(R.string.simlab_target_empty), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        SimRunConfig config = currentRunConfig();
+        List<SimDataPoint> raw = SimulationEngine.generate(config, System.currentTimeMillis(), config.operatorError.enabled);
+
+        Intent intent = new Intent(this, SimAnalysisActivity.class);
+        intent.putExtra(SimAnalysisActivity.EXTRA_POINTS, new ArrayList<>(raw));
+        intent.putExtra(SimAnalysisActivity.EXTRA_INTERFERENCES, new ArrayList<>(interferences));
+        intent.putExtra(SimAnalysisActivity.EXTRA_COLS, config.grid.cols);
+        intent.putExtra(SimAnalysisActivity.EXTRA_ROWS, config.grid.rows);
+        intent.putExtra(SimAnalysisActivity.EXTRA_STEP_CM, config.grid.stepCm);
+        intent.putExtra(SimAnalysisActivity.EXTRA_SENSOR_HEIGHT_M, config.sensor.heightAboveGroundM);
         startActivity(intent);
     }
 }

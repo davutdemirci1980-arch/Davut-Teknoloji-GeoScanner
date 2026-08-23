@@ -1,7 +1,11 @@
 package com.geoscanner.app.simulation;
 
+import java.io.Serializable;
+
 /** A placed external interference source — never a buried target, always tagged separately in the scene. */
-public class SimInterferenceSource {
+public class SimInterferenceSource implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     public InterferenceType type;
     public double xM;
     public double yM;

@@ -25,51 +25,28 @@
             android:textColor="#00aaff"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="@string/simlab_title"
+            android:text="@string/simanalysis_title"
             android:layout_weight="1"
             android:paddingStart="12dp"/>
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvSummary"
+        android:textSize="13sp"
+        android:textColor="#888888"
+        android:paddingBottom="12dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
         <LinearLayout
-            android:id="@+id/dynamicContainer"
+            android:id="@+id/resultsContainer"
             android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingBottom="8dp"/>
+            android:paddingBottom="16dp"/>
     </ScrollView>
-
-    <LinearLayout
-        android:orientation="horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp">
-        <TextView
-            android:id="@+id/btnStartSim"
-            android:background="@drawable/btn_primary"
-            android:gravity="center"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:textColor="#ffffff"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="52dp"
-            android:layout_marginEnd="6dp"
-            android:text="@string/simlab_start"/>
-        <TextView
-            android:id="@+id/btnAnalyze"
-            android:background="@drawable/btn_card"
-            android:gravity="center"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:textColor="#ffd700"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="52dp"
-            android:layout_marginStart="6dp"
-            android:text="@string/simlab_analyze"/>
-    </LinearLayout>
 </LinearLayout>

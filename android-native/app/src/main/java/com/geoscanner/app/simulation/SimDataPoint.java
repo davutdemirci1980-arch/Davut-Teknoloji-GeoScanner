@@ -1,12 +1,16 @@
 package com.geoscanner.app.simulation;
 
+import java.io.Serializable;
+
 /**
  * One raw simulated survey sample. This is the "raw" simulation layer:
  * separate from any visualization/interpolation and always tagged
  * {@link #isSimulation} = true so it can never be confused with a real
  * device reading (see design principle in the simulation lab spec).
  */
-public class SimDataPoint {
+public class SimDataPoint implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     public int gridX;
     public int gridY;
     public double xM;
