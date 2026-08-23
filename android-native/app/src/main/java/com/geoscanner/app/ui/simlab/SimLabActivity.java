@@ -1,8 +1,17 @@
 package com.geoscanner.app.ui.simlab;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Typeface;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
@@ -17,6 +26,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.geoscanner.app.R;
 import com.geoscanner.app.data.FileManager;
@@ -74,6 +85,13 @@ public class SimLabActivity extends AppCompatActivity {
     private CheckBox cbReferenceFirstColumn;
     private CheckBox cbBalanceDualSensors;
     private EditText etOperatorNote;
+    private TextView tvGpsStatus;
+    private TextView tvCompassStatus;
+    private Double capturedLat;
+    private Double capturedLon;
+    private Double capturedHeadingDeg;
+
+    private static final int REQUEST_LOCATION_PERMISSION = 400;
 
     private final List<SimTarget> targets = new ArrayList<>();
     private final List<SimInterferenceSource> interferences = new ArrayList<>();
@@ -104,7 +122,135 @@ public class SimLabActivity extends AppCompatActivity {
         buildGridSection();
         buildPresetSection();
         buildTargetSection();
+        buildLocationSection();
         buildNoteSection();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_LOCATION_PERMISSION) {
+            boolean granted = false;
+            for (int result : grantResults) {
+                if (result == PackageManager.PERMISSION_GRANTED) granted = true;
+            }
+            if (granted) {
+                captureLocation();
+            } else {
+                Toast.makeText(this, getString(R.string.simlab_gps_permission_denied), Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    private void buildLocationSection() {
+        LinearLayout c = card(getString(R.string.simlab_section_location));
+
+        TextView hint = new TextView(this);
+        hint.setText(getString(R.string.simlab_location_hint));
+        hint.setTextColor(0xFF888888);
+        hint.setTextSize(11);
+        hint.setPadding(0, 0, 0, dp(8));
+        c.addView(hint);
+
+        TextView btnGps = new TextView(this);
+        btnGps.setText(getString(R.string.simlab_gps_capture));
+        btnGps.setTextColor(0xFFFFFFFF);
+        btnGps.setGravity(Gravity.CENTER);
+        btnGps.setBackgroundResource(R.drawable.btn_card);
+        btnGps.setPadding(0, dp(10), 0, dp(10));
+        btnGps.setOnClickListener(v -> captureLocation());
+        c.addView(btnGps);
+
+        tvGpsStatus = new TextView(this);
+        tvGpsStatus.setText(getString(R.string.simlab_gps_none));
+        tvGpsStatus.setTextColor(0xFFFFD700);
+        tvGpsStatus.setTextSize(12);
+        tvGpsStatus.setPadding(0, dp(6), 0, dp(10));
+        c.addView(tvGpsStatus);
+
+        TextView btnCompass = new TextView(this);
+        btnCompass.setText(getString(R.string.simlab_compass_capture));
+        btnCompass.setTextColor(0xFFFFFFFF);
+        btnCompass.setGravity(Gravity.CENTER);
+        btnCompass.setBackgroundResource(R.drawable.btn_card);
+        btnCompass.setPadding(0, dp(10), 0, dp(10));
+        btnCompass.setOnClickListener(v -> captureCompass());
+        c.addView(btnCompass);
+
+        tvCompassStatus = new TextView(this);
+        tvCompassStatus.setText(getString(R.string.simlab_compass_none));
+        tvCompassStatus.setTextColor(0xFFFFD700);
+        tvCompassStatus.setTextSize(12);
+        tvCompassStatus.setPadding(0, dp(6), 0, 0);
+        c.addView(tvCompassStatus);
+    }
+
+    private void captureLocation() {
+        boolean hasFine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean hasCoarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        if (!hasFine && !hasCoarse) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                    REQUEST_LOCATION_PERMISSION);
+            return;
+        }
+        doCaptureLocation();
+    }
+
+    @SuppressLint("MissingPermission")
+    private void doCaptureLocation() {
+        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        Location best = null;
+        if (lm != null) {
+            for (String provider : lm.getProviders(true)) {
+                try {
+                    Location loc = lm.getLastKnownLocation(provider);
+                    if (loc != null && (best == null || loc.getTime() > best.getTime())) best = loc;
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        if (best != null) {
+            capturedLat = best.getLatitude();
+            capturedLon = best.getLongitude();
+            tvGpsStatus.setText(String.format(Locale.US, "Lat %.5f, Lon %.5f", capturedLat, capturedLon));
+        } else {
+            tvGpsStatus.setText(getString(R.string.simlab_gps_unavailable));
+        }
+    }
+
+    private void captureCompass() {
+        SensorManager sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        Sensor rotationSensor = sm != null ? sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) : null;
+        if (sm == null || rotationSensor == null) {
+            tvCompassStatus.setText(getString(R.string.simlab_compass_unavailable));
+            return;
+        }
+        SensorEventListener listener = new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                float[] rotationMatrix = new float[9];
+                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+                float[] orientation = new float[3];
+                SensorManager.getOrientation(rotationMatrix, orientation);
+                double azimuth = Math.toDegrees(orientation[0]);
+                if (azimuth < 0) azimuth += 360;
+                capturedHeadingDeg = azimuth;
+                tvCompassStatus.setText(String.format(Locale.US, "%.0f°  %s", azimuth, compassDirectionLabel(azimuth)));
+                sm.unregisterListener(this);
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            }
+        };
+        sm.registerListener(listener, rotationSensor, SensorManager.SENSOR_DELAY_UI);
+    }
+
+    private String compassDirectionLabel(double deg) {
+        String[] dirs = {"K", "KD", "D", "GD", "G", "GB", "B", "KB"};
+        int idx = (int) Math.round(deg / 45.0) % 8;
+        return dirs[idx];
     }
 
     private void buildNoteSection() {
@@ -672,6 +818,9 @@ public class SimLabActivity extends AppCompatActivity {
         config.operatorError = currentOperatorErrorConfig();
         config.calibration = currentCalibrationConfig();
         config.operatorNote = etOperatorNote.getText().toString();
+        config.latitude = capturedLat;
+        config.longitude = capturedLon;
+        config.headingDeg = capturedHeadingDeg;
         return config;
     }
 

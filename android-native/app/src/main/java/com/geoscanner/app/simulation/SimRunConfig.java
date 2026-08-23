@@ -16,4 +16,8 @@ public class SimRunConfig implements Serializable {
     public OperatorErrorConfig operatorError = new OperatorErrorConfig();
     public SimCalibrationConfig calibration = new SimCalibrationConfig();
     public String operatorNote = "";
+    /** Optional field-helper metadata (section 23) — never fed into the physics engine, display/report only. */
+    public Double latitude;
+    public Double longitude;
+    public Double headingDeg;
 }

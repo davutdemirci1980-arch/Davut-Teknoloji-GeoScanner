@@ -45,6 +45,13 @@ public class SimReportGenerator {
             if (!config.interferences.isEmpty()) {
                 w.body("Parazit kaynağı sayısı: " + config.interferences.size());
             }
+            if (config.latitude != null && config.longitude != null) {
+                w.body(String.format(Locale.US, "Saha konumu (GPS): %.5f, %.5f — yalnızca konumsal referans, sensör ölçümünü etkilemez",
+                        config.latitude, config.longitude));
+            }
+            if (config.headingDeg != null) {
+                w.body(String.format(Locale.US, "Tarama yönü (pusula): %.0f°", config.headingDeg));
+            }
             if (config.operatorNote != null && !config.operatorNote.trim().isEmpty()) {
                 w.gap();
                 w.header("Operatör Notu");

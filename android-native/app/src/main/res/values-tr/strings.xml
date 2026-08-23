@@ -139,6 +139,15 @@
     <string name="setup_step">Adım: %d cm</string>
     <string name="setup_title">Yeni Tarama Kurulumu</string>
     <string name="setup_width">Genişlik: %d</string>
+    <string name="simlab_compass_capture">🧭 Yönü Kaydet</string>
+    <string name="simlab_compass_none">Kaydedilmedi</string>
+    <string name="simlab_compass_unavailable">Bu cihazda pusula sensörü yok</string>
+    <string name="simlab_gps_capture">📍 Konumu Al</string>
+    <string name="simlab_gps_none">Alınmadı</string>
+    <string name="simlab_gps_permission_denied">Konum izni reddedildi</string>
+    <string name="simlab_gps_unavailable">Konum alınamadı — GPS\'i açıp tekrar deneyin</string>
+    <string name="simlab_location_hint">İsteğe bağlı saha yardımcıları — sadece konum ve yön, sensör simülasyonunu asla etkilemez.</string>
+    <string name="simlab_section_location">GPS ve Pusula</string>
     <string name="simreport_error">PDF rapor oluşturulamadı</string>
     <string name="simreport_generate">📄 PDF Rapor Oluştur</string>
     <string name="simreport_saved">PDF rapor kaydedildi</string>

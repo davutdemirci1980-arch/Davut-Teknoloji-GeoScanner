@@ -139,6 +139,15 @@
     <string name="setup_step">Step: %d cm</string>
     <string name="setup_title">New Scan Setup</string>
     <string name="setup_width">Width: %d</string>
+    <string name="simlab_compass_capture">🧭 Record Direction</string>
+    <string name="simlab_compass_none">Not recorded</string>
+    <string name="simlab_compass_unavailable">No compass sensor on this device</string>
+    <string name="simlab_gps_capture">📍 Capture Location</string>
+    <string name="simlab_gps_none">Not captured</string>
+    <string name="simlab_gps_permission_denied">Location permission denied</string>
+    <string name="simlab_gps_unavailable">Location unavailable — enable GPS and try again</string>
+    <string name="simlab_location_hint">Optional field helpers — position and heading only, never used in the sensor simulation itself.</string>
+    <string name="simlab_section_location">GPS &amp; Compass</string>
     <string name="simreport_error">Could not generate the PDF report</string>
     <string name="simreport_generate">📄 Generate PDF Report</string>
     <string name="simreport_saved">PDF report saved</string>
