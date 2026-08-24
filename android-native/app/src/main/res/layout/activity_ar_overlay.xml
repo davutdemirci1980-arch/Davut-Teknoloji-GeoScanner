@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <androidx.camera.view.PreviewView
+        android:id="@+id/previewView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <com.geoscanner.app.ui.ar.ArOverlayView
+        android:id="@+id/arOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <LinearLayout
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:background="#88000000"
+            android:padding="12dp"
+            android:paddingTop="28dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <ImageButton
+                android:id="@+id/btnBack"
+                android:background="@android:color/transparent"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@android:drawable/ic_menu_revert"/>
+            <TextView
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#00aaff"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="@string/ar_title"
+                android:layout_weight="1"
+                android:paddingStart="12dp"/>
+        </LinearLayout>
+        <TextView
+            android:id="@+id/tvArStatus"
+            android:textSize="12sp"
+            android:textColor="#ffd700"
+            android:background="#66000000"
+            android:padding="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+</FrameLayout>

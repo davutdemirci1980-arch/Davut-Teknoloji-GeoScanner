@@ -1,7 +1,11 @@
 package com.geoscanner.app.simulation;
 
+import java.io.Serializable;
+
 /** One detected anomaly cluster, with its geometry, two independent depth estimates, and an AI candidate label. */
-public class SimAnomalyCluster {
+public class SimAnomalyCluster implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     public double centerXM;
     public double centerYM;
     public double widthM;
