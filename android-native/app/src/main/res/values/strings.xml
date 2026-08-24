@@ -146,6 +146,12 @@
     <string name="setup_step">Step: %d cm</string>
     <string name="setup_title">New Scan Setup</string>
     <string name="setup_width">Width: %d</string>
+    <string name="ar_camera_error">Camera could not start: %s</string>
+    <string name="ar_no_reference">This scan has no GPS/compass reference — capture location and heading in the lab before using AR view.</string>
+    <string name="ar_permission_denied">Camera and location permission are required for AR view</string>
+    <string name="ar_status_live">%d target(s) tracked — pan the phone to find them</string>
+    <string name="ar_title">AR View</string>
+    <string name="ar_waiting_fix">Waiting for GPS fix…</string>
     <string name="simlab_compass_capture">🧭 Record Direction</string>
     <string name="simlab_compass_none">Not recorded</string>
     <string name="simlab_compass_unavailable">No compass sensor on this device</string>
@@ -167,6 +173,7 @@
     <string name="simcompare_quality_medium">Medium repeatability</string>
     <string name="simcompare_score_title">Repeatability Score</string>
     <string name="simcompare_title">Comparative Analysis</string>
+    <string name="simanalysis_ar_view">🥽 View in AR</string>
     <string name="simanalysis_mark">🏷 Mark</string>
     <string name="simanalysis_mark_dialog_title">Mark This Anomaly</string>
     <string name="simanalysis_mark_hint">Custom label…</string>

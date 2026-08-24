@@ -47,8 +47,20 @@
         android:textColor="#ffd700"
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:layout_marginBottom="12dp"
+        android:layout_marginBottom="8dp"
         android:text="@string/simreport_generate"/>
+
+    <TextView
+        android:id="@+id/btnArView"
+        android:background="@drawable/btn_card"
+        android:gravity="center"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#00ff88"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginBottom="12dp"
+        android:text="@string/simanalysis_ar_view"/>
 
     <ScrollView
         android:layout_width="match_parent"

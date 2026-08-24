@@ -62,6 +62,7 @@ public class SimAnalysisActivity extends AppCompatActivity {
 
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
         findViewById(R.id.btnPdfReport).setOnClickListener(v -> generateReport());
+        findViewById(R.id.btnArView).setOnClickListener(v -> openArView());
         resultsContainer = findViewById(R.id.resultsContainer);
         TextView tvSummary = findViewById(R.id.tvSummary);
 
@@ -133,6 +134,21 @@ public class SimAnalysisActivity extends AppCompatActivity {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private void openArView() {
+        if (clusters.isEmpty()) {
+            Toast.makeText(this, getString(R.string.simanalysis_none), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (config.latitude == null || config.longitude == null || config.headingDeg == null) {
+            Toast.makeText(this, getString(R.string.ar_no_reference), Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent intent = new Intent(this, com.geoscanner.app.ui.ar.ArOverlayActivity.class);
+        intent.putExtra(com.geoscanner.app.ui.ar.ArOverlayActivity.EXTRA_CLUSTERS, new ArrayList<>(clusters));
+        intent.putExtra(com.geoscanner.app.ui.ar.ArOverlayActivity.EXTRA_CONFIG, config);
+        startActivity(intent);
     }
 
     private void generateReport() {
