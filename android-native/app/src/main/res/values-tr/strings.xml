@@ -77,6 +77,8 @@
     <string name="main_settings_desc">Dil, tercihler ve hakkında</string>
     <string name="main_sim_lab">Simülasyon Laboratuvarı</string>
     <string name="main_sim_lab_desc">Sanal sahne, sensör ve tarama</string>
+    <string name="main_time_compare">Zaman Karşılaştırma</string>
+    <string name="main_time_compare_desc">Aynı alanın iki CSV taramasını karşılaştır</string>
     <string name="main_subtitle">Yer Altı Görüntüleme Sistemi</string>
     <string name="main_title">Davut Teknoloji</string>
     <string name="preview_btn_3d">3D IsoSurface Görünüm</string>
@@ -167,6 +169,29 @@
     <string name="simcompare_quality_medium">Orta tekrarlanabilirlik</string>
     <string name="simcompare_score_title">Tekrarlanabilirlik Puanı</string>
     <string name="simcompare_title">Karşılaştırmalı Analiz</string>
+    <string name="timecompare_title">Zaman Karşılaştırma</string>
+    <string name="timecompare_intro">Aynı alanın farklı zamanlarda alınmış iki CSV taramasını seçin. Değişmeyen yerler silikleştirilir — yalnızca gerçekten değişen bölgeler vurgulanır.</string>
+    <string name="timecompare_pick_a">Tarama A (önceki)</string>
+    <string name="timecompare_pick_b">Tarama B (sonraki)</string>
+    <string name="timecompare_no_file">Dosya seçilmedi</string>
+    <string name="timecompare_run">Karşılaştır</string>
+    <string name="timecompare_no_result">Henüz karşılaştırma yok</string>
+    <string name="timecompare_error_no_overlap">İki tarama karşılaştırılamayacak kadar az örtüşüyor — aynı alanı kapsadıklarından emin olun</string>
+    <string name="timecompare_overall_changed" formatted="false">Genel değişim: %%%.1f (%d / %d hücre)</string>
+    <string name="timecompare_alignment_info" formatted="false">Otomatik hizalama kayması: %d, %d hücre — benzerlik skoru %.2f</string>
+    <string name="timecompare_mode_2d">2D Harita</string>
+    <string name="timecompare_mode_3d">3D Kabartma</string>
+    <string name="timecompare_legend_decrease">Azaldı</string>
+    <string name="timecompare_legend_unchanged">Değişmedi</string>
+    <string name="timecompare_legend_increase">Arttı</string>
+    <string name="timecompare_regions_title">Değişen Alanlar</string>
+    <string name="timecompare_no_regions">Gürültü eşiğinin üzerinde anlamlı bir değişim bulunamadı.</string>
+    <string name="timecompare_increase">arttı</string>
+    <string name="timecompare_decrease">azaldı</string>
+    <string name="timecompare_export_png">🖼 PNG Olarak Dışa Aktar</string>
+    <string name="timecompare_export_pdf">📄 PDF Olarak Dışa Aktar</string>
+    <string name="timecompare_export_saved">Kaydedildi</string>
+    <string name="timecompare_export_error">Dışa aktarma başarısız</string>
     <string name="simanalysis_mark">🏷 İşaretle</string>
     <string name="simanalysis_mark_dialog_title">Bu Anomaliyi İşaretle</string>
     <string name="simanalysis_mark_hint">Özel etiket…</string>

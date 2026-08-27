@@ -77,6 +77,8 @@
     <string name="main_settings_desc">Language, preferences &amp; about</string>
     <string name="main_sim_lab">Simulation Laboratory</string>
     <string name="main_sim_lab_desc">Synthetic scenes, sensors &amp; scans</string>
+    <string name="main_time_compare">Compare Over Time</string>
+    <string name="main_time_compare_desc">Diff two CSV scans of the same area</string>
     <string name="main_subtitle">Underground Imaging System</string>
     <string name="main_title">Davut Teknoloji</string>
     <string name="preview_btn_3d">3D IsoSurface View</string>
@@ -167,6 +169,29 @@
     <string name="simcompare_quality_medium">Medium repeatability</string>
     <string name="simcompare_score_title">Repeatability Score</string>
     <string name="simcompare_title">Comparative Analysis</string>
+    <string name="timecompare_title">Compare Over Time</string>
+    <string name="timecompare_intro">Pick two CSV scans of the same area taken at different times. Unchanged spots are faded out — only what actually changed is highlighted.</string>
+    <string name="timecompare_pick_a">Scan A (earlier)</string>
+    <string name="timecompare_pick_b">Scan B (later)</string>
+    <string name="timecompare_no_file">No file selected</string>
+    <string name="timecompare_run">Compare</string>
+    <string name="timecompare_no_result">No comparison yet</string>
+    <string name="timecompare_error_no_overlap">The two scans don\'t overlap enough to compare — check that they cover the same area</string>
+    <string name="timecompare_overall_changed" formatted="false">Overall change: %.1f%% (%d / %d cells)</string>
+    <string name="timecompare_alignment_info" formatted="false">Auto-alignment shift: %d, %d cells — similarity score %.2f</string>
+    <string name="timecompare_mode_2d">2D Map</string>
+    <string name="timecompare_mode_3d">3D Relief</string>
+    <string name="timecompare_legend_decrease">Decreased</string>
+    <string name="timecompare_legend_unchanged">Unchanged</string>
+    <string name="timecompare_legend_increase">Increased</string>
+    <string name="timecompare_regions_title">Changed Areas</string>
+    <string name="timecompare_no_regions">No significant changes found above the noise threshold.</string>
+    <string name="timecompare_increase">increased</string>
+    <string name="timecompare_decrease">decreased</string>
+    <string name="timecompare_export_png">🖼 Export PNG</string>
+    <string name="timecompare_export_pdf">📄 Export PDF</string>
+    <string name="timecompare_export_saved">Saved</string>
+    <string name="timecompare_export_error">Export failed</string>
     <string name="simanalysis_mark">🏷 Mark</string>
     <string name="simanalysis_mark_dialog_title">Mark This Anomaly</string>
     <string name="simanalysis_mark_hint">Custom label…</string>

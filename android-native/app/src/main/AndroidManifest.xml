@@ -66,6 +66,7 @@
         <activity android:name=".ui.simlab.SimLabActivity" android:screenOrientation="portrait" />
         <activity android:name=".ui.simlab.SimAnalysisActivity" android:screenOrientation="portrait" />
         <activity android:name=".ui.simlab.SimComparisonActivity" android:screenOrientation="portrait" />
+        <activity android:name=".ui.compare.TimeCompareActivity" android:screenOrientation="portrait" />
         <activity
             android:name=".ui.voxler4d.Pro4DVoxlerActivity"
             android:screenOrientation="landscape"
